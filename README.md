@@ -58,7 +58,6 @@ Quantum Guard uses Supabase as the planned control plane for:
 * Activity events
 * Release metadata
 
-Installed clients must never contain a Supabase service role key or a Google OAuth client secret.
 
 ## Administrator and client roles
 
