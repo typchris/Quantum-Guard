@@ -1,0 +1,47 @@
+name: Publish verified update manifest
+
+on:
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag containing QuantumGuard.exe
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quantum-guard-update-manifest
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'typchris/Quantum-Guard'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the update feed branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Verify release asset and generate update metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: python3 scripts/publish_update_manifest.py
+      - name: Commit updated feed
+        run: |
+          git add releases/latest.json
+          if [ -f releases/latest-stable.json ]; then
+            git add releases/latest-stable.json
+          fi
+          if git diff --cached --quiet; then
+            echo "Update feed already current."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Publish verified Quantum Guard update metadata'
+          git push origin HEAD:main
