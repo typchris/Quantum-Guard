@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Quantum Guard releases
+    url: https://github.com/typchris/Quantum-Guard/releases
+    about: Download official Quantum Guard preview builds.
+  - name: Security reporting guidance
+    url: https://github.com/typchris/Quantum-Guard/blob/main/SECURITY.md
+    about: Read this before reporting a security problem.
