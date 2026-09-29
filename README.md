@@ -1,0 +1,105 @@
+<p align="center">
+  <img src="assets/qg-mark.svg" alt="Quantum Guard" width="720">
+</p>
+
+<p align="center">
+  <strong>Focus. Protection. Control.</strong><br>
+  Quantum Guard is a Windows focused application control and device management project designed around local enforcement, cloud managed policies, and secure administrator control.
+</p>
+
+<p align="center">
+  <a href="https://github.com/typchris/Quantum-Guard/releases"><img alt="GitHub release" src="https://img.shields.io/github/v/release/typchris/Quantum-Guard?include_prereleases&style=flat-square"></a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-2563EB?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/status-development%20preview-7C3AED?style=flat-square">
+</p>
+
+## Quantum Guard
+
+Quantum Guard is being developed as a central control platform for application restrictions, focus sessions, schedules, website protection, download controls, device enrollment, and administrator managed policies.
+
+The project is currently in active development. Public releases should be treated as preview builds while the cloud control system, updater, profile synchronization, device roles, and cross platform clients are being hardened.
+
+## Core capabilities
+
+| Area | Current direction |
+| --- | --- |
+| Application control | Protect selected Windows applications and use allow or deny rules |
+| Focus | Restrict distractions with configurable app policies and schedules |
+| Web protection | Block selected sites, categories, advertising domains, and trackers |
+| Download Guard | Restrict or quarantine selected download types |
+| Scheduling | Apply app, focus, and after hours rules by time |
+| Cloud control | Supabase backed identities, organizations, devices, policies, and commands |
+| Device enrollment | Organization membership plus pairing code enrollment |
+| Administration | Separate administrator and managed client experiences |
+| Updates | Central release metadata with signed in client update checks planned |
+
+## Public preview
+
+The current GitHub release is marked as a prerelease while Quantum Guard is still being tested.
+
+Before using a preview build on an important computer:
+
+1. Back up your Quantum Guard configuration.
+2. Review the release notes.
+3. Verify the SHA256 digest shown by GitHub for the executable.
+4. Test the build on a non critical device first.
+
+## Cloud architecture
+
+Quantum Guard uses Supabase as the planned control plane for:
+
+* Google authenticated profiles
+* Organizations and memberships
+* Managed devices
+* Role based access
+* Device policies
+* Pairing codes
+* Remote commands
+* Activity events
+* Release metadata
+
+Installed clients must never contain a Supabase service role key or a Google OAuth client secret.
+
+## Administrator and client roles
+
+Quantum Guard is designed so that identity and device authority are separate concepts.
+
+An administrator account may manage devices and policies where authorized. A client device receives the policy assigned to it and must not gain administrator privileges simply because a user signs in.
+
+The planned effective access decision is based on:
+
+```
+Google identity
+      ↓
+Quantum Guard profile
+      ↓
+Organization membership
+      ↓
+Current device
+      ↓
+Device role and permissions
+      ↓
+Assigned policy
+```
+
+## Releases
+
+Download preview builds from the official GitHub Releases page:
+
+**https://github.com/typchris/Quantum-Guard/releases**
+
+Do not download Quantum Guard executables from unofficial mirrors.
+
+## Security
+
+Security issues should not be posted publicly with sensitive reproduction details. See [SECURITY.md](SECURITY.md) for reporting guidance.
+
+## Support and feedback
+
+For bugs, use the repository issue templates so reports include the Windows version, Quantum Guard version, reproduction steps, and screenshots where useful.
+
+## Development status
+
+Quantum Guard is under active development. Features, data models, UI structure, and cloud behavior may change before a stable release.
+
+Copyright © 2026 Quantum Guard.
