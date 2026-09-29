@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an improvement for Quantum Guard
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or need
+      description: What problem would this feature solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe how you would like the feature to work.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Windows application
+        - Cloud and Devices
+        - Admin dashboard
+        - Android
+        - iOS or iPadOS
+        - Updates
+        - Security
+        - Other
+    validations:
+      required: true
