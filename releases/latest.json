@@ -1,0 +1,10 @@
+{
+  "version": "1.7.0",
+  "channel": "prerelease",
+  "platform": "windows-x64",
+  "mandatory": false,
+  "download_url": "https://github.com/typchris/Quantum-Guard/releases/download/v1.7.0/QuantumGuard.exe",
+  "sha256": "44c1a9d69dcf75df89904d5787fde600490ea40dde9f4993f59ac64cb142b356",
+  "release_page": "https://github.com/typchris/Quantum-Guard/releases/tag/v1.7.0",
+  "notes": "Development preview. See CHANGELOG.md and the GitHub release page before installing."
+}
