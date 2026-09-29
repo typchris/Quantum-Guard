@@ -1,10 +1,11 @@
 {
-  "version": "1.7.0",
+  "version": "1.9.0",
   "channel": "prerelease",
   "platform": "windows-x64",
   "mandatory": false,
-  "download_url": "https://github.com/typchris/Quantum-Guard/releases/download/v1.7.0/QuantumGuard.exe",
-  "sha256": "44c1a9d69dcf75df89904d5787fde600490ea40dde9f4993f59ac64cb142b356",
-  "release_page": "https://github.com/typchris/Quantum-Guard/releases/tag/v1.7.0",
-  "notes": "Development preview. See CHANGELOG.md and the GitHub release page before installing."
+  "download_url": "https://github.com/typchris/Quantum-Guard/releases/download/v1.9.0/QuantumGuard.exe",
+  "sha256": "a7032b2f88e066ec337521bbd4afb521d7a9d75022abdce6bf21cc2b68345a3b",
+  "size": 6846976,
+  "release_page": "https://github.com/typchris/Quantum-Guard/releases/tag/v1.9.0",
+  "notes": "QUANTUM GUARD 1.9.0\r\nIntegrated cloud-management and updater preview\r\n\r\nWHAT CHANGED\r\nThis package continues from the uploaded Quantum Guard 1.8.0 updater preview and integrates the cloud/device requirements discussed for Quantum Guard.\r\n\r\nImplemented in the Windows client:\r\n* Google/Supabase cloud session support using the existing PKCE login flow.\r\n* Roaming profile context plus device-specific owner/admin/client role resolution.\r\n* Managed Client UI restrictions so a client does not receive administrator controls simply by signing in.\r\n* Device heartbeat every 60 seconds with app version, hostname, Windows user and device state.\r\n* Device-specific policy polling and application.\r\n* Remote command polling for policy refresh, app update, account status, device state, Windows sign-out and app lock commands.\r\n* Dedicated pairing-code display with a 15-minute expiry state.\r\n* Cloud status repainting intended to prevent old transparent Win32 status text from remaining underneath newer messages.\r\n* Built-in GitHub update checks, background downloads, SHA-256 verification, update handoff and first-start rollback.\r\n* Update check 10 seconds after startup and then every 6 hours while running.\r\n\r\nImplemented in the connected Supabase project:\r\n* Per-device user assignments and owner/admin/client roles.\r\n* Roaming profile settings and Google profile fields.\r\n* Device control state and richer heartbeat fields.\r\n* Controlled enrollment, pairing, heartbeat, role and command RPCs.\r\n* Primary-owner protections and server-side role checks.\r\n* Administrator audit log.\r\n* JWT-protected admin-account-control Edge Function for active/suspended/blocked account state.\r\n* Device commands produced when account state changes.\r\n* Additional authorization hardening and foreign-key indexes.\r\n\r\nIMPORTANT ROLE RULE\r\nA Google account identifies the person. It does not automatically grant the same authority on every computer. Quantum Guard resolves the current device and its assignment before dec"
 }
