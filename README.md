@@ -17,7 +17,7 @@
 
 Quantum Guard is being developed as a central control platform for application restrictions, focus sessions, schedules, website protection, download controls, device enrollment, and administrator managed policies.
 
-The project is currently in active development. Public releases should be treated as preview builds while the cloud control system, updater, profile synchronization, device roles, and cross platform clients are being hardened.
+The project is currently in active development. The connected cloud control plane now includes device-specific roles, profile context, heartbeat, remote commands and account-control groundwork. The built-in updater is also implemented in the current development line. Public GitHub releases should still be treated as preview builds until the integrated Windows flow completes live desktop QA.
 
 ## Core capabilities
 
@@ -31,7 +31,7 @@ The project is currently in active development. Public releases should be treate
 | Cloud control | Supabase backed identities, organizations, devices, policies, and commands |
 | Device enrollment | Organization membership plus pairing code enrollment |
 | Administration | Separate administrator and managed client experiences |
-| Updates | Central release metadata with signed in client update checks planned |
+| Updates | Built-in verified GitHub release checks and background downloads in the current development line |
 
 ## Public preview
 
@@ -46,7 +46,7 @@ Before using a preview build on an important computer:
 
 ## Cloud architecture
 
-Quantum Guard uses Supabase as the planned control plane for:
+Quantum Guard uses Supabase as its cloud control plane for:
 
 * Google authenticated profiles
 * Organizations and memberships
@@ -65,7 +65,7 @@ Quantum Guard is designed so that identity and device authority are separate con
 
 An administrator account may manage devices and policies where authorized. A client device receives the policy assigned to it and must not gain administrator privileges simply because a user signs in.
 
-The planned effective access decision is based on:
+The effective access design is based on:
 
 ```
 Google identity
