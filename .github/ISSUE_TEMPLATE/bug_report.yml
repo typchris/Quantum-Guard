@@ -1,0 +1,69 @@
+name: Bug report
+description: Report a reproducible Quantum Guard problem
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve Quantum Guard. Please remove personal information from screenshots and logs.
+  - type: input
+    id: version
+    attributes:
+      label: Quantum Guard version
+      placeholder: 1.7.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: input
+    id: scaling
+    attributes:
+      label: Display scaling
+      placeholder: 100%, 125%, 150%
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - User interface
+        - Application protection
+        - Focus
+        - Schedules
+        - After Hours
+        - Web Protection
+        - Download Guard
+        - Cloud and Devices
+        - Updates
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact actions that cause the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Screenshots or additional information
