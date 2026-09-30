@@ -80,3 +80,17 @@ R2 becomes useful if you want Cloudflare to host release binaries instead of Git
 5. switch manifests only after the new client is distributed
 
 Do not point existing clients at an R2 binary URL before step 3 is shipped.
+
+
+## Automatic deployment from GitHub
+
+The repository includes `.github/workflows/deploy-cloudflare-update-edge.yml`.
+
+Before merging the Cloudflare Worker into `main`, add these GitHub Actions repository secrets:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+
+Create the API token in Cloudflare with only the permissions needed to deploy this Worker, and scope it to the intended Cloudflare account. Do not commit either value to the repository.
+
+After the secrets exist, a push to `main` that changes `cloudflare/update-edge/**` automatically validates and deploys the Worker. You can also run the workflow manually from GitHub Actions.
