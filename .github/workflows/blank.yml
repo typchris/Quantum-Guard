@@ -131,6 +131,28 @@ jobs:
             Write-Host "Parsed $file"
           }
 
+      - name: Enforce installer source synchronization hold
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          sentinel = Path("installer/SOURCE_SYNC_REQUIRED.md")
+          build = Path("installer/build-installer.ps1").read_text(encoding="utf-8")
+          nsis = Path("installer/QuantumGuard.nsi").read_text(encoding="utf-8")
+
+          if sentinel.exists():
+              if "SOURCE_SYNC_REQUIRED.md" not in build:
+                  raise SystemExit("Stale installer source must fail closed in build-installer.ps1")
+              print("Installer source synchronization hold is active.")
+          else:
+              if "taskkill.exe" in nsis and "/IM QuantumGuard" in nsis:
+                  raise SystemExit("Synced production installer must not use process-name taskkill handoff")
+              if "AllowUnsignedPreview" not in build:
+                  raise SystemExit("Installer build must distinguish unsigned preview QA from production signing")
+              print("Installer synchronization sentinel removed and unsafe taskkill handoff is absent.")
+          PY
+
       - name: Reject obvious committed secrets
         shell: bash
         run: |
