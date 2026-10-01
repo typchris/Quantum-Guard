@@ -109,9 +109,11 @@ No Cloudflare token, R2 secret, release-signing private key, PFX or signing pass
 
 ## GitHub source repository
 
-The application source repository may become private after the Cloudflare release path is proven for all supported clients.
+The application source repository is now private.
 
-Do not make the repository private while any production client still depends on anonymous GitHub release/raw URLs unless that client has already been migrated or a compatibility distribution path remains available.
+That means anonymous `raw.githubusercontent.com`, GitHub Release asset, and GitHub API URLs from this repository are no longer valid public runtime/update dependencies. Preview.4 and all future clients must use Cloudflare for public update/package delivery.
+
+The legacy GitHub feed remains in the private repository only as an internal compatibility/reference path. Existing external clients that depended on anonymous GitHub URLs will not be able to use it after the repository visibility change.
 
 ## Legacy GitHub feed
 
