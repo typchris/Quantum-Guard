@@ -118,6 +118,60 @@ jobs:
               raise SystemExit("Supabase JS must use an exact tested version")
           PY
 
+      - name: Reject private-GitHub runtime update dependencies
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          markers = [
+              "https://raw.githubusercontent.com/typchris/Quantum-Guard",
+              "https://github.com/typchris/Quantum-Guard/releases/download/",
+              "https://api.github.com/repos/typchris/Quantum-Guard",
+          ]
+
+          source_exts = {
+              ".go", ".cs", ".xaml", ".json", ".ts", ".js",
+              ".ps1", ".nsi", ".yml", ".yaml", ".toml"
+          }
+
+          legacy_exact = {
+              Path("releases/latest.json"),
+              Path("releases/latest-stable.json"),
+              Path("scripts/publish_update_manifest.py"),
+              Path("scripts/test_publish_update_manifest.py"),
+              Path(".github/workflows/publish-update-manifest.yml"),
+          }
+
+          cloudflare_hold = Path("cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md").exists()
+          findings = []
+
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in source_exts:
+                  continue
+              if path in legacy_exact:
+                  continue
+              if ".git" in path.parts:
+                  continue
+              if cloudflare_hold and path.parts[:2] == ("cloudflare", "update-edge"):
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              for marker in markers:
+                  if marker in text:
+                      findings.append(f"{path}: {marker}")
+
+          if findings:
+              raise SystemExit(
+                  "Private GitHub repository must not be a runtime/update dependency:\n"
+                  + "\n".join(findings)
+              )
+
+          print("No private-GitHub runtime/update dependencies found in active source.")
+          PY
+
       - name: Parse installer PowerShell scripts
         shell: pwsh
         run: |
