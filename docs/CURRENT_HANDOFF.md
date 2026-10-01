@@ -5,6 +5,7 @@
 **Android baseline:** 1.11.0-preview.2  
 **GitHub branch:** `security/preview3-release-hardening`  
 **Draft PR:** #3  
+**GitHub visibility:** private as of 2026-10-01  
 **Production release/feed:** intentionally unchanged
 
 This file is the shared checkpoint for switching between ChatGPT/Codex sessions. Do not infer that a local-only change is in GitHub unless it is explicitly listed below.
@@ -27,6 +28,7 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
   - suspended-admin denial
   - own-device status availability
   - two-organization account status fan-out
+  - pairing-code generation through schema-qualified pgcrypto, including format/expiry clamp and client denial
 - `report_archives` has no direct `authenticated` table grant. It now also has an explicit deny-all authenticated RLS policy, while checked SECURITY DEFINER RPCs and service-role server logic remain the only intended access paths.
 - Database-level size/length constraints now cap common profile, organization, device, policy, command, event, pairing-code and audit inputs to reduce storage-abuse risk.
 - Unreachable authenticated table-write grants were revoked, and organization creation now requires the checked `create_organization` RPC.
@@ -68,10 +70,12 @@ These items were completed and tested in the session that has local preview.4 so
 - First-start health acknowledgement / rollback gating was added locally.
 - Automatic installer execution remains disabled.
 - No trusted Windows code-signing certificate was found on the development PC.
+- The engine regression suite now passes after fixes for Web Protection shutdown behavior and Download Guard cleanup.
+- The Cloudflare diagnostic-upload 502 was traced to parsing a successful empty Supabase response as JSON; the local Worker/client fix and regression test pass in the Cloudflare-enabled session.
 
 ## Deliberate release holds
 
-Do **not** publish a production release, change the production update feed, make installer execution unattended, or make the source repository private until the relevant gates below are complete.
+Do **not** publish a production release, change the production update feed, or make installer execution unattended until the relevant gates below are complete. The GitHub source repository is already private, so any runtime/update path that depended on anonymous GitHub URLs must be treated as broken until migrated to Cloudflare.
 
 ### Cloudflare source drift
 
@@ -88,6 +92,10 @@ The Cloudflare-enabled session must export/copy the exact deployed Worker source
 - current trusted key ID / public-key behavior
 
 Then run the Worker test suite and only then remove `SOURCE_SYNC_REQUIRED.md`.
+
+### Private-repository runtime dependency gate
+
+The repository is now private. Preview.4 must not depend at runtime on anonymous `raw.githubusercontent.com`, GitHub Release download URLs, or GitHub API URLs for update delivery. Repository validation now rejects those URLs in active source once synchronized. Legacy GitHub feed files remain only as an explicitly manual compatibility path.
 
 ### Windows source drift
 
