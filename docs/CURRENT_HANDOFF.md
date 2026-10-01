@@ -15,7 +15,8 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
 ### Supabase
 
 - Project: `goffrcpfelmgqbidaxhb`.
-- `admin-account-control` is live as **version 7**, ACTIVE, with JWT verification enabled.
+- `admin-account-control` is live as **version 9**, ACTIVE, with JWT verification enabled.
+- The account-control HTTP boundary rejects oversized request bodies above 16 KiB and validates target UUID/status before calling the database RPC.
 - Edge Function dependencies are pinned to exact versions:
   - `jsr:@supabase/functions-js@2.5.0/edge-runtime.d.ts`
   - `npm:@supabase/supabase-js@2.117.2`
