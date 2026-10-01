@@ -53,7 +53,7 @@ jobs:
           PY
 
       - name: Test legacy manifest publisher
-        run: python -m unittest scripts.test_publish_update_manifest
+        run: cd scripts && python -m unittest test_publish_update_manifest.py
 
       - name: Check Cloudflare Worker JavaScript syntax
         run: node --check cloudflare/update-edge/src/index.js
