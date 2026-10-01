@@ -27,7 +27,7 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
   - suspended-admin denial
   - own-device status availability
   - two-organization account status fan-out
-- `report_archives` has no direct `authenticated` table grant. RLS-with-no-policy is intentional because access is through checked SECURITY DEFINER RPCs and service-role server logic.
+- `report_archives` has no direct `authenticated` table grant. It now also has an explicit deny-all authenticated RLS policy, while checked SECURITY DEFINER RPCs and service-role server logic remain the only intended access paths.
 
 ### GitHub
 
@@ -158,12 +158,12 @@ Before enabling automatic installation, perform a real Windows test matrix for:
 
 ## Supabase advisor interpretation
 
-Current advisor warnings should not be mass-fixed blindly.
+Current advisor warnings are now limited to the intentional authenticated SECURITY DEFINER surface and leaked-password protection. They should not be mass-fixed blindly.
 
 - Policy helper SECURITY DEFINER functions such as `account_is_active`, `is_org_admin`, `is_org_member`, `is_org_owner`, `owns_device`, `can_administer_user`, and `can_assign_device_policy` are referenced by RLS policies and require authenticated execution for those policies to work.
 - RPC functions exposed intentionally to authenticated clients still require their internal authorization checks.
 - Service-only functions such as `finalize_account_status_auth_sync`, `delete_expired_pairing_codes`, `handle_new_auth_user`, and `rls_auto_enable` are not granted to authenticated users.
-- `report_archives` RLS-with-no-policy is intentional because the table has no authenticated direct grant and access is mediated by checked RPCs.
+- `report_archives` now has an explicit authenticated deny-all RLS policy, so the former RLS-with-no-policy advisor item is cleared while RPC/service-role access remains unchanged.
 - Leaked-password protection is lower priority while Google OAuth is the primary sign-in path; do not weaken Google/Supabase auth to remove the warning.
 
 ## Rule for the next session
