@@ -16,6 +16,8 @@
 - `report_archives` has no direct authenticated table grant and now has an explicit deny-all authenticated RLS policy.
 - Report archive RPC flow has a rollback-only regression proving direct table access is denied while checked RPC access works.
 - Database constraints now bound common text and JSON inputs to reduce accidental or malicious Free-Tier storage exhaustion.
+- Authenticated table grants that had no reachable RLS write path were revoked.
+- Direct authenticated organization inserts are revoked; `create_organization` is the supported creation path and atomically creates the owner membership.
 
 ## Input bounds
 
@@ -104,3 +106,16 @@ Leaked-password protection remains disabled. Google OAuth is the current primary
 ## Change rule
 
 Any future RLS, role, function-grant or SECURITY DEFINER cleanup must be applied as a migration, mirrored to GitHub, and followed by the rollback-only authorization suite before release.
+
+
+## Performance-lint cleanup
+
+The three missing foreign-key indexes were added for:
+
+- `policies.organization_id`
+- `report_archives.device_id`
+- `report_archives.uploaded_by`
+
+The six RLS auth-initplan warnings were removed by evaluating `auth.uid()` through scalar subqueries in the affected policies. The performance advisor now reports only unused-index informational findings, which should not be acted on while the dataset is still small because many of those indexes support expected future access paths.
+
+All five stored rollback-only regressions passed again after the grant/index/RLS changes.
