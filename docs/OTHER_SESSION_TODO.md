@@ -81,6 +81,7 @@ Preserve:
 - query-string redaction
 - removed temporary upload routes
 - current R2 bindings
+- `package-lock.json` generated from the reviewed Worker dependencies so GitHub deploys can use `npm ci` reproducibly
 - current staging key ID/public-key behavior
 - current no-release staging state
 - diagnostic upload completion handling that accepts a successful empty Supabase response without deleting the stored object
