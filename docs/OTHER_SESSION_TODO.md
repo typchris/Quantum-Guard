@@ -12,6 +12,8 @@ Do **not** publish a production release while completing these steps.
 
 ## 1. Synchronize the tested preview.4 application source
 
+The GitHub repository is already private. The synchronized application source must therefore have **no runtime dependency on anonymous GitHub raw/release/API URLs** for updates or blocklists. Cloudflare must be the active public distribution path.
+
 Commit the complete source that produced the tested preview.4 build, including:
 
 - WinUI 3 / Windows App SDK UI project
@@ -36,6 +38,8 @@ After the source is committed, rerun:
 - collapsed-sidebar checks
 - signed-manifest tests
 - local security test groups
+- private-repository runtime URL scan
+- diagnostic upload success path where Supabase returns an empty success response
 
 ## 2. Synchronize the exact deployed Cloudflare Worker source
 
@@ -56,6 +60,7 @@ Preserve:
 - current R2 bindings
 - current staging key ID/public-key behavior
 - current no-release staging state
+- diagnostic upload completion handling that accepts a successful empty Supabase response without deleting the stored object
 
 Do not copy secret values into GitHub.
 
@@ -168,4 +173,4 @@ When all previous items pass:
 - stage a signed preview release in R2
 - publish its signed staging manifest last
 - canary-test one device
-- do not switch production or make the GitHub source repo private until the Cloudflare updater is proven for every production client that otherwise depends on anonymous GitHub URLs
+- do not switch production until the Cloudflare updater is proven for every supported production client. Because the GitHub source repo is already private, explicitly verify that preview.4 and all future clients have no anonymous-GitHub runtime update dependency.
