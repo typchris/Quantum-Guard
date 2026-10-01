@@ -111,6 +111,9 @@ Verify:
 - first-start health acknowledgement
 - rollback on failed/missing health
 - uninstall path
+- fixed `Program Files\\Quantum Guard` install root
+- refusal to recursively uninstall from an unexpected/tampered install root
+- rollback rejection of invalid version/path traversal values
 
 ## 4. Cloudflare token replacement
 
