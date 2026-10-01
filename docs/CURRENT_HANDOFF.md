@@ -33,6 +33,7 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
 - Database-level size/length constraints now cap common profile, organization, device, policy, command, event, pairing-code and audit inputs to reduce storage-abuse risk.
 - Unreachable authenticated table-write grants were revoked, and organization creation now requires the checked `create_organization` RPC.
 - Missing foreign-key indexes were added and all Supabase auth-RLS initplan warnings were cleared; the performance advisor now shows only unused-index informational findings.
+- `update_my_profile_preferences` is live as the safe profile-roaming write path. It updates only display name, HTTPS avatar URL and profile settings, while direct authenticated profile UPDATE remains unavailable.
 
 ### GitHub
 
