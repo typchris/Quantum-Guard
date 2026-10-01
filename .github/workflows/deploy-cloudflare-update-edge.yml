@@ -1,19 +1,19 @@
 name: Deploy Quantum Guard update edge
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "cloudflare/update-edge/**"
-      - ".github/workflows/deploy-cloudflare-update-edge.yml"
   workflow_dispatch:
+    inputs:
+      confirm_source_synced:
+        description: "Type yes only after deployed Cloudflare Worker source has been synced to this branch"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   deploy:
+    if: ${{ inputs.confirm_source_synced == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: cloudflare-staging
