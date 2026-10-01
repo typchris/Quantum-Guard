@@ -10,6 +10,21 @@ and Draft PR #3.
 
 Do **not** publish a production release while completing these steps.
 
+## 0. Protect the private source repository
+
+The repository is private, but `main` is currently unprotected.
+
+In GitHub Settings, add a branch protection rule or repository ruleset for `main` that:
+
+- requires changes through pull requests
+- requires the `Repository validation` status check
+- blocks force pushes
+- blocks branch deletion
+- dismisses stale approvals after new commits if review is enabled
+- restricts bypasses to the account owner only when emergency recovery is needed
+
+Do not disable validation just to merge PR #3.
+
 ## 1. Synchronize the tested preview.4 application source
 
 The GitHub repository is already private. The synchronized application source must therefore have **no runtime dependency on anonymous GitHub raw/release/API URLs** for updates or blocklists. Cloudflare must be the active public distribution path.
