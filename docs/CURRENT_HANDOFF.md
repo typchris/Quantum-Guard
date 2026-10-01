@@ -29,6 +29,8 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
   - two-organization account status fan-out
 - `report_archives` has no direct `authenticated` table grant. It now also has an explicit deny-all authenticated RLS policy, while checked SECURITY DEFINER RPCs and service-role server logic remain the only intended access paths.
 - Database-level size/length constraints now cap common profile, organization, device, policy, command, event, pairing-code and audit inputs to reduce storage-abuse risk.
+- Unreachable authenticated table-write grants were revoked, and organization creation now requires the checked `create_organization` RPC.
+- Missing foreign-key indexes were added and all Supabase auth-RLS initplan warnings were cleared; the performance advisor now shows only unused-index informational findings.
 
 ### GitHub
 
