@@ -6,12 +6,12 @@ This checklist tracks the September 30 security review follow-up. It separates c
 
 - Supabase migration `quantum_guard_account_status_atomic_multi_org` makes account status database writes transactional across profile state, every authorized organization, device command fan-out and one audit row per organization.
 - Partial multi-organization authority is rejected. Target owners remain protected; target administrators require an owner.
-- `admin-account-control` Edge Function version 4 is JWT-protected and delegates database authorization/state changes to the transactional RPC.
+- `admin-account-control` Edge Function version 6 is JWT-protected and delegates database authorization/state changes to the transactional RPC.
 - Supabase Auth ban/unban remains a separate external operation and the audit rows record its synchronization result.
-- `@supabase/supabase-js` is pinned to `2.117.2` and the Edge Runtime type import is pinned to `2.4.5`.
+- `@supabase/supabase-js` is pinned to `2.117.2` and the Edge Runtime type import is pinned to `2.5.0`.
 - Rollback-only regression coverage passed for two-org command/audit fan-out and foreign-org rejection.
 
-## Cloudflare release migration prepared
+## Cloudflare release migration prepared but not deployed from this chat
 
 `cloudflare/update-edge-v2` implements the exact signed-manifest envelope enforced by Windows 1.11.0-preview.3: RSA-SHA256 / PKCS#1 v1.5 over the raw base64-decoded payload JSON, key ID `qg-staging-2026-09`, schema 1, private R2 storage and `/downloads/<signed-id>` delivery.
 
@@ -43,7 +43,7 @@ Do not reuse the human/agent token for CI.
 
 ## Source/dependency blocker
 
-The preview.3 package proves `QuantumGuard.Engine.exe` was built with `golang.org/x/sys v0.10.0`; `go-winio v0.6.2` is already current. The current GitHub repository does not contain preview.3's Go `go.mod` or WinUI application source, so a safe `x/sys` upgrade cannot be rebuilt or regression-tested here. Commit/upload the preview.3 application source before enabling automatic installation.
+The preview.3 package proves `QuantumGuard.Engine.exe` was built with `golang.org/x/sys v0.10.0`; `go-winio v0.6.2` is already current. The current GitHub repository still does not contain preview.3's Go `go.mod` or WinUI application source, so a safe `x/sys` upgrade cannot be rebuilt or regression-tested from repository source yet. `go-winio v0.6.2` is current; `golang.org/x/sys` must be upgraded only after the preview.3 source is committed/uploaded and the Windows regression suite can be rerun. The live Supabase account-control migration, regression test, and Edge Function source are now mirrored under `supabase/` on this hardening branch.
 
 ## Windows signing and installer
 
