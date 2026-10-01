@@ -25,6 +25,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Refuse stale Worker source
+        shell: bash
+        run: |
+          if [ -e SOURCE_SYNC_REQUIRED.md ]; then
+            echo "::error::Cloudflare Worker source is not synchronized with the live staging deployment."
+            echo "::error::Replace this folder with the reviewed deployed source and remove SOURCE_SYNC_REQUIRED.md in the same commit."
+            exit 1
+          fi
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
