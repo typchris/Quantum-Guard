@@ -58,19 +58,46 @@ jobs:
       - name: Check Cloudflare Worker JavaScript syntax
         run: node --check cloudflare/update-edge/src/index.js
 
-      - name: Enforce Cloudflare source synchronization hold
+      - name: Enforce Cloudflare deployment guardrails
         shell: bash
         run: |
-          test -s cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md
           python - <<'PY'
           from pathlib import Path
+
           workflow = Path(".github/workflows/deploy-cloudflare-update-edge.yml").read_text(encoding="utf-8")
-          if "SOURCE_SYNC_REQUIRED.md" not in workflow:
-              raise SystemExit("Cloudflare deploy workflow must fail closed while source is unsynchronized")
+          worker = Path("cloudflare/update-edge/src/index.js").read_text(encoding="utf-8")
+          sentinel = Path("cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md")
+
           if "CLOUDFLARE_WORKER_DEPLOY_TOKEN" not in workflow:
               raise SystemExit("Cloudflare deploy workflow must use the least-privilege deploy secret name")
           if "\n  push:" in workflow or "\n  release:" in workflow:
-              raise SystemExit("Cloudflare staging deployment must remain manual until source drift is resolved")
+              raise SystemExit("Cloudflare staging deployment must remain manual")
+          if "confirm_source_synced" not in workflow:
+              raise SystemExit("Cloudflare deployment requires explicit source-sync confirmation")
+
+          if sentinel.exists():
+              if "SOURCE_SYNC_REQUIRED.md" not in workflow:
+                  raise SystemExit("Unsynchronized Worker source must fail closed")
+              print("Cloudflare source synchronization hold is active.")
+          else:
+              stale_markers = [
+                  "raw.githubusercontent.com/typchris/Quantum-Guard",
+                  "github.com/typchris/Quantum-Guard/releases/download/",
+              ]
+              found = [marker for marker in stale_markers if marker in worker]
+              if found:
+                  raise SystemExit(
+                      "Cloudflare sentinel was removed but legacy GitHub-proxy source remains: "
+                      + ", ".join(found)
+                  )
+              required_live_markers = ["/reports", "/downloads"]
+              missing = [marker for marker in required_live_markers if marker not in worker]
+              if missing:
+                  raise SystemExit(
+                      "Synchronized Worker source is missing expected protected routes: "
+                      + ", ".join(missing)
+                  )
+              print("Cloudflare source appears synchronized with the R2/report architecture.")
           PY
 
       - name: Validate Supabase dependency pins
