@@ -28,4 +28,4 @@ Please record:
 * Device synchronization
 * Updates
 
-Use the GitHub issue templates when possible.
+If you have access to the private repository, use the GitHub issue templates when possible. Do not place secrets, OAuth codes, API tokens, private report URLs, or signing material in issue text or screenshots.
