@@ -154,7 +154,7 @@ This cannot be marked complete by code changes.
 
 No trusted code-signing certificate was found on the development PC.
 
-Choose/acquire a trusted Windows code-signing certificate or signing service.
+Choose/acquire a trusted Windows code-signing certificate or signing service. For the repository `signtool` helper, install/expose the signing identity through the Windows certificate store/HSM provider and reference it by thumbprint; do not pass a PFX password on a command line.
 
 Do not paste or commit its private key/password.
 
