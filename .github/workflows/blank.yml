@@ -184,7 +184,8 @@ jobs:
           foreach ($file in @(
             'installer/build-installer.ps1',
             'installer/rollback.ps1',
-            'installer/sign-artifacts.ps1'
+            'installer/sign-artifacts.ps1',
+            'installer/verify-release.ps1'
           )) {
             [void][scriptblock]::Create((Get-Content -Raw $file))
             Write-Host "Parsed $file"
