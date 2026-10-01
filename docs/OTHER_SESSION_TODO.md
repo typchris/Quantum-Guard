@@ -41,6 +41,7 @@ Commit the complete source that produced the tested preview.4 build, including:
 - rollback request/failure path
 - startup/service migration changes
 - Admin/Client role restrictions
+- profile roaming/preferences wired through `update_my_profile_preferences` rather than direct `profiles` table updates; the RPC only changes display name, HTTPS avatar URL and profile settings
 
 Do not commit generated secrets, OAuth client secrets, service-role keys, signing private keys, PFX files or Cloudflare credentials.
 
