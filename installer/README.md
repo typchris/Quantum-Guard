@@ -10,7 +10,8 @@ Quantum Guard 1.11 is a multi-file WinUI 3 + Go engine application. The legacy s
 4. Build the NSIS installer from the signed payload.
 5. Authenticode-sign and RFC3161 timestamp the final installer.
 6. Verify the installer signature, compute SHA-256, then create the signed Cloudflare release manifest.
-7. Upload the package + descriptor to private R2 and publish the signed manifest **last**.
+7. Run `verify-release.ps1` against the final signed installer to verify Authenticode, signer identity, timestamp, byte size and SHA-256.
+8. Upload the package + descriptor to private R2 and publish the signed manifest **last**.
 
 `sign-artifacts.ps1` uses SHA-256 for both file digest and RFC3161 timestamp digest. It signs by certificate-store thumbprint and deliberately does not accept a PFX password on the command line. The certificate must contain the Code Signing EKU and a usable private-key/signing provider. A trusted production certificate is required for production distribution. A self-signed certificate is for QA only and must never be presented as a production signature.
 
@@ -53,3 +54,10 @@ The installer foundation now uses a fixed machine-wide install root under `Progr
 Uninstall refuses recursive removal if either the active installer path or the HKLM `InstallRoot` value does not match the expected Quantum Guard directory. The rollback helper also validates the install root and semantic-version path components before resolving a previous payload.
 
 Preserve these guards when synchronizing the newer preview.4 installer integration.
+
+
+## Final release verification
+
+Use `verify-release.ps1` only after the final installer has been Authenticode-signed and timestamped. It rejects unsigned/untrusted installers, requires a timestamp certificate, can enforce the expected publisher subject/thumbprint, and emits the exact final size/SHA-256 descriptor used by release tooling.
+
+Never compute the release hash before the final signing step because signing changes the installer bytes.
