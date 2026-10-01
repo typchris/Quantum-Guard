@@ -1,21 +1,19 @@
-# Quantum Guard preview.3 release hardening status
+# Quantum Guard preview.4 release hardening status
 
-This checklist tracks the September 30 security review follow-up. It separates changes that are already live from changes that require an account owner, Cloudflare deployment access, application source, or a trusted code-signing identity.
+This checklist tracks the September 30 security review follow-up and the October 1 preview.4 hardening work. It separates changes that are already live from changes that require an account owner, Cloudflare deployment access, application source, or a trusted code-signing identity.
 
 ## Completed live
 
 - Supabase migration `quantum_guard_account_status_atomic_multi_org` makes account status database writes transactional across profile state, every authorized organization, device command fan-out and one audit row per organization.
 - Partial multi-organization authority is rejected. Target owners remain protected; target administrators require an owner.
-- `admin-account-control` Edge Function version 6 is JWT-protected and delegates database authorization/state changes to the transactional RPC.
-- Supabase Auth ban/unban remains a separate external operation and the audit rows record its synchronization result.
+- `admin-account-control` Edge Function version 7 is JWT-protected and delegates database authorization/state changes to the transactional RPC.
+- Supabase Auth ban/unban remains a separate external operation. Its result is finalized through the service-role-only `finalize_account_status_auth_sync` RPC so all related audit rows are updated together.
 - `@supabase/supabase-js` is pinned to `2.117.2` and the Edge Runtime type import is pinned to `2.5.0`.
 - Rollback-only regression coverage passed for two-org command/audit fan-out and foreign-org rejection.
 
-## Cloudflare release migration prepared but not deployed from this chat
+## Cloudflare release migration status
 
-`cloudflare/update-edge-v2` implements the exact signed-manifest envelope enforced by Windows 1.11.0-preview.3: RSA-SHA256 / PKCS#1 v1.5 over the raw base64-decoded payload JSON, key ID `qg-staging-2026-09`, schema 1, private R2 storage and `/downloads/<signed-id>` delivery.
-
-It intentionally does **not** overwrite the currently deployed `quantum-guard-downloads-staging` Worker because that Worker also owns the audited private `/reports/*` archive routes and its deployed source is not available through this repository connection. Merge or route the update paths only after the current report Worker source is retrieved through the Cloudflare account.
+The Cloudflare-enabled session has already updated the live staging Worker and verified the private report routes and no-release update endpoints. The source currently stored under `cloudflare/update-edge/` in this branch is older than that live deployment. `SOURCE_SYNC_REQUIRED.md` and the manual-only workflow intentionally block deployment until the exact reviewed live Worker source is synchronized back into GitHub.
 
 ## Owner/account actions required
 
@@ -43,10 +41,10 @@ Do not reuse the human/agent token for CI.
 
 ## Source/dependency blocker
 
-The preview.3 package proves `QuantumGuard.Engine.exe` was built with `golang.org/x/sys v0.10.0`; `go-winio v0.6.2` is already current. The current GitHub repository still does not contain preview.3's Go `go.mod` or WinUI application source, so a safe `x/sys` upgrade cannot be rebuilt or regression-tested from repository source yet. `go-winio v0.6.2` is current; `golang.org/x/sys` must be upgraded only after the preview.3 source is committed/uploaded and the Windows regression suite can be rerun. The live Supabase account-control migration, regression test, and Edge Function source are now mirrored under `supabase/` on this hardening branch.
+The Cloudflare/local-source session reports that the Go dependency upgrade passed its regression suite and preview.4 builds successfully. The complete preview.4 WinUI/Go source still needs to be synchronized into this branch so GitHub contains the exact code that produced the tested build. The live Supabase account-control migration, regression test, and Edge Function source are mirrored under `supabase/` on this hardening branch.
 
 ## Windows signing and installer
 
 `installer/` contains NSIS packaging, rollback metadata and SHA-256/RFC3161 Authenticode hooks. Production still requires a trusted publisher certificate (or another Microsoft-supported trusted signing identity). No private signing key or PFX belongs in the repository.
 
-Automatic installation stays disabled until the application source adds installer handoff, installed-service/startup migration, first-start health acknowledgement and rollback invocation, followed by real Windows QA.
+The local preview.4 work reports installer handoff and first-start health/rollback gating are implemented, but those source changes still need to be synchronized into this branch and exercised through real Windows upgrade/rollback QA. Automatic installation remains disabled until that QA passes and a trusted Windows signing identity is configured.
