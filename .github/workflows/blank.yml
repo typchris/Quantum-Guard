@@ -15,9 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Validate release manifest
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Validate legacy release manifest
         shell: bash
         run: |
           python - <<'PY'
@@ -39,7 +49,89 @@ jobs:
           if data["platform"] != "windows-x64":
               raise SystemExit("Unexpected platform value")
 
-          print(f"Validated Quantum Guard {data['version']} ({data['channel']})")
+          print(f"Validated legacy Quantum Guard {data['version']} ({data['channel']})")
+          PY
+
+      - name: Test legacy manifest publisher
+        run: python -m unittest scripts.test_publish_update_manifest
+
+      - name: Check Cloudflare Worker JavaScript syntax
+        run: node --check cloudflare/update-edge/src/index.js
+
+      - name: Enforce Cloudflare source synchronization hold
+        shell: bash
+        run: |
+          test -s cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md
+          python - <<'PY'
+          from pathlib import Path
+          workflow = Path(".github/workflows/deploy-cloudflare-update-edge.yml").read_text(encoding="utf-8")
+          if "SOURCE_SYNC_REQUIRED.md" not in workflow:
+              raise SystemExit("Cloudflare deploy workflow must fail closed while source is unsynchronized")
+          if "CLOUDFLARE_WORKER_DEPLOY_TOKEN" not in workflow:
+              raise SystemExit("Cloudflare deploy workflow must use the least-privilege deploy secret name")
+          if "\n  push:" in workflow or "\n  release:" in workflow:
+              raise SystemExit("Cloudflare staging deployment must remain manual until source drift is resolved")
+          PY
+
+      - name: Validate Supabase dependency pins
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          src = Path("supabase/functions/admin-account-control/index.ts").read_text(encoding="utf-8")
+          required = [
+              'jsr:@supabase/functions-js@2.5.0/edge-runtime.d.ts',
+              'npm:@supabase/supabase-js@2.117.2',
+          ]
+          for dep in required:
+              if dep not in src:
+                  raise SystemExit(f"Missing exact dependency pin: {dep}")
+          if re.search(r'@supabase/supabase-js@(latest|2)["\']', src):
+              raise SystemExit("Supabase JS must use an exact tested version")
+          PY
+
+      - name: Parse installer PowerShell scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($file in @(
+            'installer/build-installer.ps1',
+            'installer/rollback.ps1',
+            'installer/sign-artifacts.ps1'
+          )) {
+            [void][scriptblock]::Create((Get-Content -Raw $file))
+            Write-Host "Parsed $file"
+          }
+
+      - name: Reject obvious committed secrets
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          patterns = [
+              re.compile(r"sb_secret_[A-Za-z0-9_-]{16,}"),
+              re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
+              re.compile(r"ghp_[A-Za-z0-9]{20,}"),
+              re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+          ]
+
+          skip = {".git"}
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or any(part in skip for part in path.parts):
+                  continue
+              if path.stat().st_size > 2_000_000:
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              for pattern in patterns:
+                  if pattern.search(text):
+                      raise SystemExit(f"Potential secret/private key material found in {path}")
+          print("No obvious committed secret patterns found.")
           PY
 
       - name: Verify repository documentation
@@ -49,3 +141,6 @@ jobs:
           test -s SECURITY.md
           test -s SUPPORT.md
           test -s CHANGELOG.md
+          test -s UPDATES.md
+          test -s docs/CURRENT_HANDOFF.md
+          test -s docs/CLOUDFLARE_RELEASE_CREDENTIALS.md
