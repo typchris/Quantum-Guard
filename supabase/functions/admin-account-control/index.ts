@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
     previous_status?: string;
     organizations_affected?: number;
     devices_notified?: number;
-    audit_ids?: string[];
+    audit_ids?: number[];
   };
 
   let authWarning: string | null = null;
@@ -93,29 +93,23 @@ Deno.serve(async (req: Request) => {
     authWarning = e instanceof Error ? e.message : String(e);
   }
 
-  const auditIds = Array.isArray(result.audit_ids) ? result.audit_ids : [];
-  if (auditIds.length) {
-    const syncState = authWarning ? "failed" : "succeeded";
-    const { data: existingRows } = await admin
-      .from("admin_audit_log")
-      .select("id,detail")
-      .in("id", auditIds);
+  const auditIds = Array.isArray(result.audit_ids)
+    ? result.audit_ids.filter((id) => Number.isInteger(id))
+    : [];
 
-    if (existingRows?.length) {
-      await Promise.all(
-        existingRows.map((row: any) =>
-          admin
-            .from("admin_audit_log")
-            .update({
-              detail: {
-                ...(row.detail ?? {}),
-                auth_sync: syncState,
-                auth_warning: authWarning,
-              },
-            })
-            .eq("id", row.id),
-        ),
-      );
+  if (auditIds.length) {
+    const { error: finalizeError } = await admin.rpc(
+      "finalize_account_status_auth_sync",
+      {
+        p_audit_ids: auditIds,
+        p_sync_status: authWarning ? "warning" : "ok",
+        p_sync_error: authWarning,
+      },
+    );
+    if (finalizeError) {
+      authWarning = authWarning
+        ? `${authWarning}; audit finalize failed: ${finalizeError.message}`
+        : `audit finalize failed: ${finalizeError.message}`;
     }
   }
 
