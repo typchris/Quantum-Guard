@@ -1,96 +1,61 @@
 # Quantum Guard Cloudflare update edge
 
-This Worker gives Quantum Guard a stable Cloudflare endpoint for release metadata while keeping the existing GitHub release download security model unchanged.
+> **DEPLOYMENT HOLD:** the Worker source currently in this folder is older than the live Quantum Guard staging Worker. Do not deploy it. `SOURCE_SYNC_REQUIRED.md` intentionally blocks the GitHub deploy workflow until the exact reviewed live Worker source is synchronized back into this folder.
 
-## Why Workers
+## Current architecture
 
-Quantum Guard is a native Windows application, so the executable itself is not deployed to Cloudflare Workers. Supabase remains the application control plane.
+The live staging Worker is the Cloudflare distribution edge for Quantum Guard. The Cloudflare-enabled development session reports that it currently preserves:
 
-This Worker is intentionally narrow:
+- signed update-manifest delivery
+- private R2 package delivery
+- private diagnostic/report routes
+- authorization checks for report access
+- query-string redaction
+- removal of obsolete temporary upload routes
+- separate staging release behavior
+- no published staging release yet
 
-- serves the verified update manifests
-- validates the manifest shape before returning it
-- keeps executable downloads on the existing official GitHub Releases URL
-- adds short edge caching and Cloudflare observability
-- does not store Supabase secrets
-- does not proxy or rewrite the executable download
+Supabase remains the identity, organization, device, policy, command and audit control plane.
 
-R2 is not required for this first step. Moving the executable to R2 later would require a coordinated Quantum Guard client update because the current updater accepts only the official GitHub release download path.
+## Source synchronization procedure
 
-## Endpoints
+Before any GitHub-driven deployment:
 
-- `GET /health`
-- `GET /updates/latest.json`
-- `GET /updates/latest-stable.json`
+1. Export/copy the exact source and configuration of the currently deployed staging Worker from the Cloudflare-enabled session.
+2. Replace the older Worker source/configuration in this folder.
+3. Confirm all required R2 bindings, environment variables, compatibility settings and routes are represented without committing secret values.
+4. Preserve private `/reports/*` behavior and signed R2 update/download behavior.
+5. Run the full Worker test suite locally.
+6. Run a dry-run deployment.
+7. Verify staging endpoints against the already-deployed Worker.
+8. Remove `SOURCE_SYNC_REQUIRED.md` **in the same reviewed commit** that contains the synchronized source.
+9. Only then manually dispatch the GitHub deploy workflow with `confirm_source_synced=yes`.
 
-The Worker reads manifests from:
+If the sentinel still exists, deployment must fail.
 
-- `https://raw.githubusercontent.com/typchris/Quantum-Guard/main/releases/latest.json`
-- `https://raw.githubusercontent.com/typchris/Quantum-Guard/main/releases/latest-stable.json`
+## GitHub deployment credentials
 
-## Local setup
-
-Use a supported Node.js release, then:
-
-```powershell
-cd cloudflare/update-edge
-npm install
-npx wrangler --version
-npm run check
-npm run dev
-```
-
-Cloudflare recommends installing Wrangler locally per project. This folder pins Wrangler 4.143.0 so local and CI behavior are reproducible.
-
-## Deploy
-
-Authenticate to the intended Cloudflare account:
-
-```powershell
-cd cloudflare/update-edge
-npx wrangler login
-npm run deploy
-```
-
-Wrangler will deploy the Worker as `quantum-guard-update-edge` and print the `workers.dev` URL.
-
-After deployment, verify:
-
-```powershell
-curl https://YOUR-WORKER.workers.dev/health
-curl https://YOUR-WORKER.workers.dev/updates/latest.json
-```
-
-Only after those checks pass should the private Quantum Guard application source be updated to read its update manifest from the Worker URL.
-
-## Security boundary
-
-The Worker treats GitHub as the release authority and rejects manifests that do not match the expected Quantum Guard format, Windows x64 platform, SHA-256 shape, size limit, official GitHub release URL prefix, and release page prefix.
-
-It does not alter `download_url`, so current clients still download the executable directly from the official GitHub release.
-
-## Later option: R2
-
-R2 becomes useful if you want Cloudflare to host release binaries instead of GitHub. That should be a separate migration:
-
-1. add the R2 bucket and Worker binding
-2. publish signed/verified release binaries to R2
-3. update the desktop client's trusted download-host rules
-4. test rollback and checksum verification
-5. switch manifests only after the new client is distributed
-
-Do not point existing clients at an R2 binary URL before step 3 is shipped.
-
-
-## Automatic deployment from GitHub
-
-The repository includes `.github/workflows/deploy-cloudflare-update-edge.yml`.
-
-Before merging the Cloudflare Worker into `main`, add these GitHub Actions repository secrets:
+The deployment workflow uses a protected `cloudflare-staging` environment and expects:
 
 - `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_WORKER_DEPLOY_TOKEN`
 
-Create the API token in Cloudflare with only the permissions needed to deploy this Worker, and scope it to the intended Cloudflare account. Do not commit either value to the repository.
+The deploy token must be a least-privilege replacement for the broad account-wide token. It must not be embedded in application source or client binaries.
 
-After the secrets exist, a push to `main` that changes `cloudflare/update-edge/**` automatically validates and deploys the Worker. You can also run the workflow manually from GitHub Actions.
+R2 package publishing uses separate bucket-limited credentials. Do not reuse the Worker deployment token for release object publishing.
+
+## Release safety
+
+The Worker is not the release authority by itself. A Windows update is only eligible after the client validates the signed manifest and package metadata, and after the final installer passes SHA-256 and trusted Authenticode verification.
+
+Publish release packages first and the signed manifest last.
+
+See:
+
+- `../../UPDATES.md`
+- `../../docs/CURRENT_HANDOFF.md`
+- `../../docs/CLOUDFLARE_RELEASE_CREDENTIALS.md`
+
+## What the older source in this folder represents
+
+The current checked-in `src/index.js` predates the completed staging migration and still describes the former GitHub-proxy update edge. It remains only so the branch history shows the migration path. It must be replaced, not redeployed.
