@@ -99,7 +99,7 @@ foreach ($item in $Path) {
   }
 
   if ($ExpectedSubject -and $signature.SignerCertificate.Subject -notlike "*$ExpectedSubject*") {
-    throw "Unexpected signer subject for $resolved: $($signature.SignerCertificate.Subject)"
+    throw "Unexpected signer subject for ${resolved}: $($signature.SignerCertificate.Subject)"
   }
 
   if (-not $signature.TimeStamperCertificate) {
