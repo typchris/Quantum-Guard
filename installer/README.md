@@ -44,3 +44,12 @@ Automatic update execution remains disabled until:
 - the signed installer is validated on Windows
 - the new version reports first-start health
 - rollback is proven when that health check fails
+
+
+## Path safety
+
+The installer foundation now uses a fixed machine-wide install root under `Program Files\Quantum Guard`; the directory-selection page was removed.
+
+Uninstall refuses recursive removal if either the active installer path or the HKLM `InstallRoot` value does not match the expected Quantum Guard directory. The rollback helper also validates the install root and semantic-version path components before resolving a previous payload.
+
+Preserve these guards when synchronizing the newer preview.4 installer integration.
