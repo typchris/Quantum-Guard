@@ -97,6 +97,10 @@ jobs:
                       "Synchronized Worker source is missing expected protected routes: "
                       + ", ".join(missing)
                   )
+              if not Path("cloudflare/update-edge/package-lock.json").is_file():
+                  raise SystemExit(
+                      "Synchronized Worker source must include package-lock.json for reproducible CI/deploys"
+                  )
               print("Cloudflare source appears synchronized with the R2/report architecture.")
           PY
 
