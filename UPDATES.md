@@ -134,3 +134,12 @@ Do not use the legacy workflow for the 1.11 multi-file installer.
 The staging update feeds should continue to return no release until a deliberately prepared, signed preview package is ready for end-to-end installer testing.
 
 Production and staging credentials, R2 buckets, manifests and release channels should remain distinct.
+
+
+## Older installed clients
+
+Because the GitHub source repository is already private, older clients that only know anonymous GitHub raw/release URLs may no longer auto-update.
+
+Do not embed private-repository credentials in those clients.
+
+Use the one-time migration plan in `docs/LEGACY_CLIENT_MIGRATION.md` for builds that do not already trust the Cloudflare update path.
