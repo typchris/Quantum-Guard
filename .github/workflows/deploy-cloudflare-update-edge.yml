@@ -39,8 +39,16 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install dependencies
-        run: npm install
+      - name: Require locked dependencies
+        shell: bash
+        run: |
+          test -s package-lock.json || {
+            echo "::error::Synchronized Worker source must include package-lock.json."
+            exit 1
+          }
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Validate Worker
         run: npm run check
