@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: quantum-guard-cloudflare-staging
+  cancel-in-progress: false
+
 jobs:
   deploy:
     if: ${{ inputs.confirm_source_synced == 'yes' }}
