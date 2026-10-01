@@ -36,6 +36,9 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
 
 ### GitHub
 
+- The repository is private.
+- The `main` branch is currently unprotected. Add a ruleset/branch protection requiring PR review and the `Repository validation` check, and block force pushes/deletions before merging release hardening.
+
 - Draft PR #3 is the release-hardening integration PR.
 - The branch contains:
   - Supabase multi-org migration and regression test
@@ -44,7 +47,7 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
   - rollback helper
   - Authenticode/RFC3161 signing helper
   - Cloudflare credential-split guidance
-- Repository validation has been passing.
+- Repository validation run #65 passed after action pinning, private-GitHub runtime URL checks, and credential-file guards.
 - Cloudflare deployment is **manual-only**.
 - The Cloudflare workflow expects:
   - `CLOUDFLARE_ACCOUNT_ID`
@@ -98,6 +101,8 @@ Then run the Worker test suite and only then remove `SOURCE_SYNC_REQUIRED.md`.
 The repository is now private. Preview.4 must not depend at runtime on anonymous `raw.githubusercontent.com`, GitHub Release download URLs, or GitHub API URLs for update delivery. Repository validation now rejects those URLs in active source once synchronized. Legacy GitHub feed files remain only as an explicitly manual compatibility path.
 
 ### Windows source drift
+
+As of the latest GitHub inspection, the branch still does not contain a Go `go.mod`, WinUI `.csproj`, or XAML application source. The local preview.4 source therefore has **not** yet been synchronized despite the repository now being private.
 
 The complete preview.4 WinUI/Go source is still local to the other session. Sync it into this branch before merge so GitHub contains the code that produced the tested build.
 
