@@ -21,20 +21,40 @@ SetRegView 64
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "QuantumGuard-${APP_VERSION}-x64-Setup.exe"
 InstallDir "$PROGRAMFILES64\Quantum Guard"
-InstallDirRegKey HKLM "${REGKEY}" "InstallRoot"
 ShowInstDetails show
 ShowUninstDetails show
 
-Page directory
 Page instfiles
 UninstPage uninstConfirm
 UninstPage instfiles
 
 Function .onInit
+  SetShellVarContext all
+
   ${IfNot} ${RunningX64}
     MessageBox MB_ICONSTOP "Quantum Guard requires 64-bit Windows."
     Abort
   ${EndIf}
+
+  StrCmp $INSTDIR "$PROGRAMFILES64\Quantum Guard" install_dir_ok
+  MessageBox MB_ICONSTOP "Quantum Guard must be installed in $PROGRAMFILES64\Quantum Guard."
+  Abort
+install_dir_ok:
+FunctionEnd
+
+Function un.onInit
+  SetShellVarContext all
+
+  StrCmp $INSTDIR "$PROGRAMFILES64\Quantum Guard" uninstall_dir_ok
+  MessageBox MB_ICONSTOP "Refusing to uninstall from an unexpected directory: $INSTDIR"
+  Abort
+uninstall_dir_ok:
+
+  ReadRegStr $R0 HKLM "${REGKEY}" "InstallRoot"
+  StrCmp $R0 "$PROGRAMFILES64\Quantum Guard" uninstall_registry_ok
+  MessageBox MB_ICONSTOP "Quantum Guard install metadata is invalid. Refusing recursive removal."
+  Abort
+uninstall_registry_ok:
 FunctionEnd
 
 Section "Quantum Guard" SEC_MAIN
