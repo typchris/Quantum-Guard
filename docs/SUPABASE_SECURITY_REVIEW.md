@@ -11,6 +11,7 @@
 - Cross-organization command, event and policy-assignment boundaries have rollback-only regression coverage.
 - `admin-account-control` is live as Edge Function **version 7**, ACTIVE, with JWT verification enabled.
 - Account-wide status changes are authorized across every organization that the target belongs to.
+- `update_my_profile_preferences` is the checked profile-roaming write path. It only permits active users to change display name, HTTPS avatar URL, and `profile_settings`; direct authenticated profile UPDATE remains unavailable.
 - Profile status, device-command fan-out and one audit row per organization are committed through `apply_account_status_change`.
 - Auth ban/unban synchronization is finalized through service-role-only `finalize_account_status_auth_sync`.
 - `report_archives` has no direct authenticated table grant and now has an explicit deny-all authenticated RLS policy.
@@ -46,7 +47,7 @@ These limits are intentionally generous for normal clients while preventing one 
 
 ## SECURITY DEFINER advisor warnings
 
-The remaining Supabase advisor warning about authenticated users being able to execute SECURITY DEFINER functions should **not** be resolved by mass revocation.
+The remaining Supabase advisor warning about authenticated users being able to execute SECURITY DEFINER functions should **not** be resolved by mass revocation. The count is currently 24 because the new checked profile-preference RPC is intentionally authenticated.
 
 Several functions are RLS helpers and are intentionally referenced by policies:
 
@@ -87,6 +88,8 @@ Service-only functions are not granted to authenticated users, including:
 A future cleanup may move internal RLS helper functions to a non-exposed schema, but only together with policy rewrites and full regression testing. Do not revoke helper execution in-place because PostgreSQL RLS evaluation depends on it.
 
 ## Current regression suite
+
+The pairing-code regression also verifies schema-qualified pgcrypto generation, ten-character uppercase hexadecimal format, minimum expiry clamping, and client denial.
 
 Live rollback-only tests currently cover:
 
