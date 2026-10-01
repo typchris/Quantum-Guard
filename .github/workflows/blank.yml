@@ -271,3 +271,30 @@ jobs:
           test -s UPDATES.md
           test -s docs/CURRENT_HANDOFF.md
           test -s docs/CLOUDFLARE_RELEASE_CREDENTIALS.md
+
+
+      - name: Enforce ready-for-review source synchronization gates
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+        shell: bash
+        run: |
+          if [ -e cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md ]; then
+            echo "::error::PR cannot leave draft while Cloudflare Worker source is unsynchronized."
+            exit 1
+          fi
+          if [ -e installer/SOURCE_SYNC_REQUIRED.md ]; then
+            echo "::error::PR cannot leave draft while installer/application source is unsynchronized."
+            exit 1
+          fi
+          if ! find . -name go.mod -not -path './.git/*' -print -quit | grep -q .; then
+            echo "::error::PR cannot leave draft without the tested Go engine source."
+            exit 1
+          fi
+          if ! find . -name '*.csproj' -not -path './.git/*' -print -quit | grep -q .; then
+            echo "::error::PR cannot leave draft without the tested WinUI/.NET source."
+            exit 1
+          fi
+          if ! find . -name '*.xaml' -not -path './.git/*' -print -quit | grep -q .; then
+            echo "::error::PR cannot leave draft without WinUI XAML source."
+            exit 1
+          fi
+          echo "Ready-for-review source synchronization gates passed."
