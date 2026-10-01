@@ -14,6 +14,7 @@ The live staging Worker is the Cloudflare distribution edge for Quantum Guard. T
 - removal of obsolete temporary upload routes
 - separate staging release behavior
 - no published staging release yet
+- diagnostic archive completion handling that accepts a successful empty Supabase response without misclassifying the upload as failed
 
 Supabase remains the identity, organization, device, policy, command and audit control plane.
 
@@ -24,7 +25,7 @@ Before any GitHub-driven deployment:
 1. Export/copy the exact source and configuration of the currently deployed staging Worker from the Cloudflare-enabled session.
 2. Replace the older Worker source/configuration in this folder.
 3. Confirm all required R2 bindings, environment variables, compatibility settings and routes are represented without committing secret values.
-4. Preserve private `/reports/*` behavior and signed R2 update/download behavior.
+4. Preserve private `/reports/*` behavior and signed R2 update/download behavior, including the regression-tested empty-success-response handling for report completion.
 5. Run the full Worker test suite locally.
 6. Run a dry-run deployment.
 7. Verify staging endpoints against the already-deployed Worker.
