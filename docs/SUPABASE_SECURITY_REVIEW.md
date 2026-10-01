@@ -9,7 +9,7 @@
 - Anonymous table access is not granted.
 - Account-active enforcement is implemented as **RESTRICTIVE** RLS policies on the organization/device/policy control-plane tables.
 - Cross-organization command, event and policy-assignment boundaries have rollback-only regression coverage.
-- `admin-account-control` is live as Edge Function **version 7**, ACTIVE, with JWT verification enabled.
+- `admin-account-control` is live as Edge Function **version 9**, ACTIVE, with JWT verification enabled.
 - Account-wide status changes are authorized across every organization that the target belongs to.
 - `update_my_profile_preferences` is the checked profile-roaming write path. It only permits active users to change display name, HTTPS avatar URL, and `profile_settings`; direct authenticated profile UPDATE remains unavailable.
 - Profile status, device-command fan-out and one audit row per organization are committed through `apply_account_status_change`.
@@ -122,3 +122,5 @@ The three missing foreign-key indexes were added for:
 The six RLS auth-initplan warnings were removed by evaluating `auth.uid()` through scalar subqueries in the affected policies. The performance advisor now reports only unused-index informational findings, which should not be acted on while the dataset is still small because many of those indexes support expected future access paths.
 
 All five stored rollback-only regressions passed again after the grant/index/RLS changes.
+
+- The live account-control HTTP boundary rejects oversized request bodies above 16 KiB and validates target UUID/status before calling the database RPC.
