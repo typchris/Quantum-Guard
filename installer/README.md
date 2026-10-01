@@ -28,4 +28,19 @@ The installer records `CurrentVersion` and `PreviousVersion` under `HKLM\Softwar
 
 ## Still required in application source
 
-The preview.3 source is not present in the public GitHub repository. Before enabling unattended installation, update the WinUI/Go source so it can: launch the signed installer after download verification, hand off cleanly, migrate the startup/service path to the installed version, acknowledge first-start health, and request rollback on failure. Do not enable automatic execution until those changes pass live Windows QA.
+The local preview.4 source session reports that authenticated installer handoff and first-start health/rollback gating have been implemented and tested locally. Those changes are not yet synchronized into this Git branch. Do not enable unattended installation until the exact preview.4 source is committed here and live Windows QA passes fresh install, upgrade, startup/service migration, health acknowledgement, failure rollback, interrupted install, and uninstall scenarios.
+
+
+## Repository safety hold
+
+The installer files in this branch are a release-hardening foundation. The local preview.4 session has newer installer/application integration work that must be synchronized before this branch is merged.
+
+Do not use process-name termination as the final production handoff. The running Quantum Guard UI/engine should explicitly authorize and coordinate update shutdown so an unrelated process with the same name cannot be targeted.
+
+Automatic update execution remains disabled until:
+
+- trusted Authenticode signing is configured
+- the exact preview.4 source is in GitHub
+- the signed installer is validated on Windows
+- the new version reports first-start health
+- rollback is proven when that health check fails
