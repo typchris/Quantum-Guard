@@ -28,6 +28,7 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
   - own-device status availability
   - two-organization account status fan-out
 - `report_archives` has no direct `authenticated` table grant. It now also has an explicit deny-all authenticated RLS policy, while checked SECURITY DEFINER RPCs and service-role server logic remain the only intended access paths.
+- Database-level size/length constraints now cap common profile, organization, device, policy, command, event, pairing-code and audit inputs to reduce storage-abuse risk.
 
 ### GitHub
 
@@ -169,3 +170,12 @@ Current advisor warnings are now limited to the intentional authenticated SECURI
 ## Rule for the next session
 
 Before changing release infrastructure, read this file, PR #3, and the live deployed state. Prefer synchronizing already-tested local/Cloudflare changes over reimplementing them independently.
+
+
+## Cross-session action list
+
+The Cloudflare/local-source session has a dedicated checklist at:
+
+`docs/OTHER_SESSION_TODO.md`
+
+Use that file rather than reconstructing the remaining steps from chat history.
