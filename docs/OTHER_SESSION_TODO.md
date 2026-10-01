@@ -56,6 +56,14 @@ After the source is committed, rerun:
 - private-repository runtime URL scan
 - diagnostic upload success path where Supabase returns an empty success response
 
+## 1A. Verify legacy-client migration
+
+Read `docs/LEGACY_CLIENT_MIGRATION.md`.
+
+Because the repository is private, test at least one older GitHub-only updater build and confirm it fails its update check safely without disabling local protection. Then verify a manual upgrade to the Cloudflare-capable preview preserves configuration and reaches a successful Cloudflare update check.
+
+Do not put GitHub credentials in the client.
+
 ## 2. Synchronize the exact deployed Cloudflare Worker source
 
 The GitHub Worker source is deliberately blocked because it is older than the live staging deployment.
