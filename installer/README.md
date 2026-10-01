@@ -12,7 +12,7 @@ Quantum Guard 1.11 is a multi-file WinUI 3 + Go engine application. The legacy s
 6. Verify the installer signature, compute SHA-256, then create the signed Cloudflare release manifest.
 7. Upload the package + descriptor to private R2 and publish the signed manifest **last**.
 
-`sign-artifacts.ps1` uses SHA-256 for both file digest and RFC3161 timestamp digest. A trusted production certificate is required for production distribution. A self-signed certificate is for QA only and must never be presented as a production signature.
+`sign-artifacts.ps1` uses SHA-256 for both file digest and RFC3161 timestamp digest. It signs by certificate-store thumbprint and deliberately does not accept a PFX password on the command line. The certificate must contain the Code Signing EKU and a usable private-key/signing provider. A trusted production certificate is required for production distribution. A self-signed certificate is for QA only and must never be presented as a production signature.
 
 ## Build
 
