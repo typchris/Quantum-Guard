@@ -141,6 +141,7 @@ jobs:
               Path("scripts/publish_update_manifest.py"),
               Path("scripts/test_publish_update_manifest.py"),
               Path(".github/workflows/publish-update-manifest.yml"),
+              Path(".github/workflows/blank.yml"),
           }
 
           cloudflare_hold = Path("cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md").exists()
