@@ -1,0 +1,128 @@
+name: Android Preview 6 Build
+
+on:
+  push:
+    branches:
+      - android/preview6
+    paths:
+      - "android/source_parts/**"
+      - "android/preview6_overlay/**"
+      - "android/preview6_overlay_parts/**"
+      - "android/QA_CHECKLIST_PREVIEW_6.md"
+      - "android/RELEASE_NOTES_PREVIEW_6.md"
+      - ".github/workflows/android-preview6.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-preview6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 | sort -V | tail -1)"
+          fi
+          test -x "$SDKMANAGER"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Reconstruct Preview 5 source
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/qg-android"
+          cat android/source_parts/part* | base64 -d > "$RUNNER_TEMP/qg-source.tgz"
+          tar -xzf "$RUNNER_TEMP/qg-source.tgz" -C "$RUNNER_TEMP/qg-android"
+          QG_SRC="$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5"
+          test -f "$QG_SRC/settings.gradle"
+          echo "QG_SRC=$QG_SRC" >> "$GITHUB_ENV"
+
+      - name: Apply Preview 6 overlay
+        shell: bash
+        run: |
+          cp -a android/preview6_overlay/. "$QG_SRC/"
+          cat android/preview6_overlay_parts/part* | base64 -d > "$RUNNER_TEMP/qg-preview6-overlay.txz"
+          echo "7b8cb1f173029074a6df1b653747f84bc26a26571edadb915be544d8ce13a7d1  $RUNNER_TEMP/qg-preview6-overlay.txz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/qg-preview6-overlay.txz" -C "$QG_SRC"
+          grep -q "versionName '1.11.0-preview.6'" "$QG_SRC/app/build.gradle"
+          test -f "$QG_SRC/app/src/main/java/com/quantumguard/android/BrowserPolicyManager.java"
+          test -f "$QG_SRC/app/src/main/java/com/quantumguard/android/ActivityLog.java"
+
+      - name: Build full Android protection blocklists
+        shell: bash
+        working-directory: ${{ env.QG_SRC }}
+        run: |
+          python3 scripts/build_blocklists.py
+          test -s app/src/main/assets/adaway.qgh
+          test -s app/src/main/assets/UT1/adult.qgh
+          test -s app/src/main/assets/UT1/gambling.qgh
+          test -s app/src/main/assets/UT1/gaming.qgh
+          test -s app/src/main/assets/UT1/social.qgh
+          test -s app/src/main/assets/UT1/streaming.qgh
+          test -s app/src/main/assets/UT1/vpn.qgh
+          test "$(stat -c%s app/src/main/assets/UT1/adult.qgh)" -gt 1000000
+
+      - name: Unit tests, lint, and APK build
+        shell: bash
+        working-directory: ${{ env.QG_SRC }}
+        run: |
+          gradle --no-daemon clean testDebugUnitTest :app:lintDebug :app:assembleDebug
+
+      - name: Verify Preview 6 APK
+        shell: bash
+        run: |
+          APK="$QG_SRC/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.6'"
+
+          unzip -l "$APK" > "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/adaway.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/adult.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/gambling.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/gaming.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/social.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/streaming.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/vpn.qgh" "$RUNNER_TEMP/apk-files.txt"
+
+      - name: Prepare QA artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          APK="$QG_SRC/app/build/outputs/apk/debug/app-debug.apk"
+          cp "$APK" artifacts/QuantumGuard-Android-1.11.0-preview.6-QA.apk
+          sha256sum artifacts/QuantumGuard-Android-1.11.0-preview.6-QA.apk             > artifacts/QuantumGuard-Android-1.11.0-preview.6-QA.apk.sha256
+          cp android/QA_CHECKLIST_PREVIEW_6.md artifacts/
+          cp android/RELEASE_NOTES_PREVIEW_6.md artifacts/
+
+      - name: Upload Preview 6 QA package
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuantumGuard-Android-1.11.0-preview.6-QA
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
