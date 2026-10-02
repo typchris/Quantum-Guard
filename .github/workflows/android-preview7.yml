@@ -94,7 +94,31 @@ jobs:
           echo "e09ff6a0b8c3e5762fcb3a4d7e8a7e520dc7992a78713296be864da580b84398  $RUNNER_TEMP/preview7.patch.xz" | sha256sum -c -
           xz -dc "$RUNNER_TEMP/preview7.patch.xz" > "$RUNNER_TEMP/preview7.patch"
           cd "$QG_SRC"
-          patch -p1 < "$RUNNER_TEMP/preview7.patch"
+          set +e
+          patch -p1 --batch < "$RUNNER_TEMP/preview7.patch"
+          PATCH_RC=$?
+          set -e
+          if [ "$PATCH_RC" -ne 0 ]; then
+            REJECTS="$(find . -name '*.rej' -print | sort)"
+            EXPECTED="./app/src/main/res/xml/accessibility_service_config.xml.rej"
+            if [ "$REJECTS" != "$EXPECTED" ]; then
+              echo "Unexpected Preview 7 patch rejects:"
+              printf '%s\n' "$REJECTS"
+              exit 1
+            fi
+          fi
+
+          rm -f app/src/main/res/xml/accessibility_service_config.xml.rej
+          cat > app/src/main/res/xml/accessibility_service_config.xml <<'XML'
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeViewClicked|typeWindowContentChanged"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:notificationTimeout="80"
+              android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+              android:canRetrieveWindowContent="true"
+              android:description="@string/accessibility_description"
+              android:settingsActivity="com.quantumguard.android.MainActivity" />
+          XML
 
           mkdir -p qa-signing
           tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview7_qa_keystore.b64" | base64 --decode > qa-signing/quantumguard-preview.jks
