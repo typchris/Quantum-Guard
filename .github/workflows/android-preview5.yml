@@ -1,0 +1,47 @@
+name: Android Preview 5
+
+on:
+  push:
+    branches: [ android-preview5 ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild Android source archive
+        run: |
+          cat android-build/source.b64.* | tr -d '\n\r' | base64 --decode > android-source-preview5.zip
+          echo "20ead049363b8c238d199c4d3f711b1a0e60a475aa29cfc9f8c8f377d29e7d94  android-source-preview5.zip" | sha256sum -c -
+          rm -rf android
+          mkdir android
+          unzip -q android-source-preview5.zip -d android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: yes | sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Build QA APK
+        working-directory: android
+        run: gradle --no-daemon clean :app:assembleDebug
+      - name: Verify APK
+        working-directory: android
+        run: |
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee QuantumGuard-Android-1.11.0-preview.5-QA.sha256
+          cp app/build/outputs/apk/debug/app-debug.apk QuantumGuard-Android-1.11.0-preview.5-QA.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuantumGuard-Android-1.11.0-preview.5-QA
+          path: |
+            android/QuantumGuard-Android-1.11.0-preview.5-QA.apk
+            android/QuantumGuard-Android-1.11.0-preview.5-QA.sha256
+          retention-days: 14
