@@ -73,20 +73,23 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.6'"
 
-          unzip -l "$APK" | grep -q 'assets/adaway.qgh'
-          unzip -l "$APK" | grep -q 'assets/UT1/adult.qgh'
-          unzip -l "$APK" | grep -q 'assets/UT1/gambling.qgh'
-          unzip -l "$APK" | grep -q 'assets/UT1/gaming.qgh'
-          unzip -l "$APK" | grep -q 'assets/UT1/social.qgh'
-          unzip -l "$APK" | grep -q 'assets/UT1/streaming.qgh'
-          unzip -l "$APK" | grep -q 'assets/UT1/vpn.qgh'
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/qg-apk-files.txt"
+          grep -Fxq 'assets/adaway.qgh' "$RUNNER_TEMP/qg-apk-files.txt"
+          grep -Fxq 'assets/UT1/adult.qgh' "$RUNNER_TEMP/qg-apk-files.txt"
+          grep -Fxq 'assets/UT1/gambling.qgh' "$RUNNER_TEMP/qg-apk-files.txt"
+          grep -Fxq 'assets/UT1/gaming.qgh' "$RUNNER_TEMP/qg-apk-files.txt"
+          grep -Fxq 'assets/UT1/social.qgh' "$RUNNER_TEMP/qg-apk-files.txt"
+          grep -Fxq 'assets/UT1/streaming.qgh' "$RUNNER_TEMP/qg-apk-files.txt"
+          grep -Fxq 'assets/UT1/vpn.qgh' "$RUNNER_TEMP/qg-apk-files.txt"
 
           test "$(stat -c%s "$APK")" -gt 30000000
 
-          unzip -p "$APK" classes.dex | strings | grep -q 'DownloadRestrictions'
-          unzip -p "$APK" classes.dex | strings | grep -q 'block_app_installs'
+          unzip -p "$APK" 'classes*.dex' > "$RUNNER_TEMP/qg-dex.bin"
+          strings "$RUNNER_TEMP/qg-dex.bin" > "$RUNNER_TEMP/qg-dex-strings.txt"
+          grep -Fq 'DownloadRestrictions' "$RUNNER_TEMP/qg-dex-strings.txt"
+          grep -Fq 'block_app_installs' "$RUNNER_TEMP/qg-dex-strings.txt"
           grep -q 'DISALLOW_INSTALL_APPS' app/src/main/java/com/quantumguard/android/DeviceController.java
-          unzip -p "$APK" classes.dex | strings | grep -q 'refresh_app_inventory'
+          grep -Fq 'refresh_app_inventory' "$RUNNER_TEMP/qg-dex-strings.txt"
 
           cp "$APK" QuantumGuard-Android-1.11.0-preview.6-QA.apk
           sha256sum QuantumGuard-Android-1.11.0-preview.6-QA.apk | tee QuantumGuard-Android-1.11.0-preview.6-QA.sha256
