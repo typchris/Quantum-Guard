@@ -90,6 +90,8 @@ Add timing/backoff tests and verify the resulting request rate stays comfortably
 
 ## 1D. Diagnostic UI and safe payload
 
+A QA binary package wording patch now uses `Send diagnostic report`, but that patch is not a substitute for source. Port the same wording into the exact WinUI/Go source and implement the real preview control there.
+
 Update the WinUI source to:
 
 - label the action `Send diagnostic report`
