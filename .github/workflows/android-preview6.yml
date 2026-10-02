@@ -73,6 +73,19 @@ jobs:
           echo "7b8cb1f173029074a6df1b653747f84bc26a26571edadb915be544d8ce13a7d1  $RUNNER_TEMP/qg-preview6-overlay.txz" | sha256sum -c -
           tar -xJf "$RUNNER_TEMP/qg-preview6-overlay.txz" -C "$QG_SRC"
           cp -a android/preview6_overlay/. "$QG_SRC/"
+
+          # Preview 6 uses the compact Android client architecture. Remove legacy source
+          # files that exist only in the older Preview 5 CI archive and conflict with
+          # the current PolicyStore/SupabaseApi interfaces.
+          rm -f \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/AppConfig.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/Diagnostics.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/DeviceRepository.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/DomainRules.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/PolicyEngine.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/RealtimeClient.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/UpdateChecker.java"
+
           grep -q "versionName '1.11.0-preview.6'" "$QG_SRC/app/build.gradle"
           test -f "$QG_SRC/app/src/main/java/com/quantumguard/android/BrowserPolicyManager.java"
           test -f "$QG_SRC/app/src/main/java/com/quantumguard/android/ActivityLog.java"
