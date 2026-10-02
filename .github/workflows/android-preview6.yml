@@ -5,7 +5,7 @@ on:
     branches:
       - android/preview6
     paths:
-      - "android/source_parts/**"
+      - "android/preview5_verified_source.b64"
       - "android/preview6_overlay/**"
       - "android/preview6_overlay_parts/**"
       - "android/QA_CHECKLIST_PREVIEW_6.md"
@@ -50,13 +50,15 @@ jobs:
         with:
           gradle-version: "8.13"
 
-      - name: Reconstruct Preview 5 source
+      - name: Reconstruct verified Preview 5 source
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/qg-android"
-          cat android/source_parts/part* | base64 -d > "$RUNNER_TEMP/qg-source.tgz"
-          tar -xzf "$RUNNER_TEMP/qg-source.tgz" -C "$RUNNER_TEMP/qg-android"
-          QG_SRC="$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5"
+          tr -d '\n\r' < android/preview5_verified_source.b64 | base64 --decode > "$RUNNER_TEMP/qg-preview5.zip"
+          echo "da26ba54d464c90bd17bcf5cb79501a0c969b52fb68b682953ebf81094a9b034  $RUNNER_TEMP/qg-preview5.zip" | sha256sum -c -
+          QG_SRC="$RUNNER_TEMP/qg-android"
+          rm -rf "$QG_SRC"
+          mkdir -p "$QG_SRC"
+          unzip -q "$RUNNER_TEMP/qg-preview5.zip" -d "$QG_SRC"
           test -f "$QG_SRC/settings.gradle"
           echo "QG_SRC=$QG_SRC" >> "$GITHUB_ENV"
 
