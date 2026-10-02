@@ -35,6 +35,8 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
 - Unreachable authenticated table-write grants were revoked, and organization creation now requires the checked `create_organization` RPC.
 - Missing foreign-key indexes were added and all Supabase auth-RLS initplan warnings were cleared; the performance advisor now shows only unused-index informational findings.
 - `update_my_profile_preferences` is live as the safe profile-roaming write path. It updates only display name, HTTPS avatar URL and profile settings, while direct authenticated profile UPDATE remains unavailable.
+- Automatic retention is live through `run_quantum_guard_retention_cleanup()` plus pg_cron. Daily cleanup removes expired/used pairing codes, completed/failed/expired commands older than 30 days, routine/info events older than 30 days, and old unassigned policy versions when a newer same-name version exists. The existing expired report-archive metadata cleanup remains separate. Supabase Auth tables are not touched.
+- The retention regression passed in a rollback transaction, verifying stale rows are removed while critical events and the assigned current policy are retained.
 
 ### GitHub
 
@@ -49,7 +51,7 @@ This file is the shared checkpoint for switching between ChatGPT/Codex sessions.
   - rollback helper
   - Authenticode/RFC3161 signing helper
   - Cloudflare credential-split guidance
-- Repository validation run #65 passed after action pinning, private-GitHub runtime URL checks, and credential-file guards.
+- Repository validation run #96 passed after the retention migration/test commits.
 - Cloudflare deployment is **manual-only**.
 - The Cloudflare workflow expects:
   - `CLOUDFLARE_ACCOUNT_ID`
