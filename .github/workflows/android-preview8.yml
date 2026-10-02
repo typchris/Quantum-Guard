@@ -8,9 +8,11 @@ on:
       - "android/preview5_verified_source.b64"
       - "android/preview6_overlay/**"
       - "android/preview6_overlay_parts/**"
-      - "android/preview8_patch.xz.b64"
-      - "android/preview8_qa_keystore.b64"
-      - ".github/workflows/android-preview7.yml"
+      - "android/preview7_patch.xz.b64"
+      - "android/preview7_qa_keystore.b64"
+      - "android/preview8_usage_patch.xz.b64"
+      - "android/preview8/**"
+      - ".github/workflows/android-preview8.yml"
   workflow_dispatch:
 
 permissions:
@@ -90,7 +92,7 @@ jobs:
       - name: Apply Preview 7 enforcement patch
         shell: bash
         run: |
-          tr -d '\n\r' < android/preview8_patch.xz.b64 | base64 --decode > "$RUNNER_TEMP/preview7.patch.xz"
+          tr -d '\n\r' < android/preview7_patch.xz.b64 | base64 --decode > "$RUNNER_TEMP/preview7.patch.xz"
           echo "e09ff6a0b8c3e5762fcb3a4d7e8a7e520dc7992a78713296be864da580b84398  $RUNNER_TEMP/preview7.patch.xz" | sha256sum -c -
           xz -dc "$RUNNER_TEMP/preview7.patch.xz" > "$RUNNER_TEMP/preview7.patch"
           cd "$QG_SRC"
@@ -139,7 +141,7 @@ jobs:
           PY
 
           mkdir -p qa-signing
-          tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview8_qa_keystore.b64" | base64 --decode > qa-signing/quantumguard-preview.jks
+          tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview7_qa_keystore.b64" | base64 --decode > qa-signing/quantumguard-preview.jks
           echo "865ad526f0eba7a8856f54a020c3c7a920639b225e98f0235819fc0e4055bea2  qa-signing/quantumguard-preview.jks" | sha256sum -c -
 
           python3 scripts/qa_static_checks.py
@@ -213,11 +215,13 @@ jobs:
           printf '%s\n' "$SIG"
           printf '%s\n' "$SIG" | tr -d ':' | tr '[:upper:]' '[:lower:]' | grep -q "13c11e862ad179b58f8b6def377912fd390433c4d98c4669785361f5b60e4beb"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.7'"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.8'"
 
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions "$APK" > "$RUNNER_TEMP/permissions.txt"
           ! grep -q "android.permission.POST_NOTIFICATIONS" "$RUNNER_TEMP/permissions.txt"
           grep -q "android.permission.MANAGE_EXTERNAL_STORAGE" "$RUNNER_TEMP/permissions.txt"
+          grep -q "android.permission.PACKAGE_USAGE_STATS" "$RUNNER_TEMP/permissions.txt"
+          grep -q "android.permission.SYSTEM_ALERT_WINDOW" "$RUNNER_TEMP/permissions.txt"
 
           unzip -l "$APK" > "$RUNNER_TEMP/apk-files.txt"
           grep -q "assets/adaway.qgh" "$RUNNER_TEMP/apk-files.txt"
