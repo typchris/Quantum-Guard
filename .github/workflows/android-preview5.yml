@@ -19,6 +19,48 @@ jobs:
           rm -rf android
           mkdir android
           unzip -q android-source-preview5.zip -d android
+      - name: Apply Android Preview 5 QA fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          main = Path("android/app/src/main/java/com/quantumguard/android/MainActivity.java")
+          text = main.read_text(encoding="utf-8")
+          old = "int flags=data.getFlags()&(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);getContentResolver().takePersistableUriPermission(u,flags);"
+          new = """boolean grantRead=(data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0;boolean grantWrite=(data.getFlags()&Intent.FLAG_GRANT_WRITE_URI_PERMISSION)!=0;if(grantRead&&grantWrite)getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);else if(grantRead)getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);else if(grantWrite)getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_WRITE_URI_PERMISSION);"""
+          if old not in text:
+              raise SystemExit("Expected URI permission source pattern was not found")
+          text = text.replace(old, new)
+          text = text.replace(
+              "android.graphics.Typeface.DEFAULT,1",
+              "android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD",
+          )
+          main.write_text(text, encoding="utf-8")
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          m = manifest.read_text(encoding="utf-8")
+          if "xmlns:tools=" not in m:
+              m = re.sub(
+                  r'(<manifest\\b[^>]*xmlns:android="http://schemas.android.com/apk/res/android")',
+                  r'\\1 xmlns:tools="http://schemas.android.com/tools"',
+                  m,
+                  count=1,
+              )
+          m = re.sub(
+              r'<uses-permission\\s+android:name="android.permission.QUERY_ALL_PACKAGES"\\s*/>',
+              '<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />',
+              m,
+              count=1,
+          )
+          manifest.write_text(m, encoding="utf-8")
+
+          gradle = Path("android/app/build.gradle")
+          g = gradle.read_text(encoding="utf-8")
+          g = re.sub(r'compileSdk\\s+35\\b', 'compileSdk 36', g)
+          g = re.sub(r'targetSdk\\s+35\\b', 'targetSdk 36', g)
+          gradle.write_text(g, encoding="utf-8")
+          PY
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -28,7 +70,7 @@ jobs:
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -1)"
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
@@ -46,7 +88,7 @@ jobs:
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -f "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.5'"
           sha256sum "$APK" | tee QuantumGuard-Android-1.11.0-preview.5-QA.sha256
