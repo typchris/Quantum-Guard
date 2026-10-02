@@ -14,7 +14,7 @@ on:
       - "android/preview8/**"
       - "android/preview9/**"
       - "android/preview9_efficiency.patch"
-      - ".github/workflows/android-preview8.yml"
+      - ".github/workflows/android-preview9.yml"
   workflow_dispatch:
 
 permissions:
