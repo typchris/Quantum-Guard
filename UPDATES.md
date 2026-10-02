@@ -1,46 +1,145 @@
 # Publishing Quantum Guard updates
 
-## One time setup
+Quantum Guard 1.11 uses a multi-file WinUI 3 + Go engine package. The old single-EXE GitHub updater is now a **legacy compatibility path**, not the target production release system.
 
-The public repository is `typchris/Quantum-Guard`. Put these files from `release-tools` into matching paths on its `main` branch:
+The target update architecture is:
 
-* `.github/workflows/publish-update-manifest.yml`
-* `scripts/publish_update_manifest.py`
+```text
+Quantum Guard client
+        |
+        v
+Cloudflare Worker
+        |
+        +-- signed update manifest
+        +-- private R2 package delivery
+        |
+        v
+client verifies manifest + version + platform + size + SHA-256
+        |
+        v
+Windows verifies trusted Authenticode publisher
+        |
+        v
+versioned installer / first-start health / rollback
+```
 
-The workflow needs permission to write repository contents. If branch protection prevents its commit, use a reviewed manual manifest change or an approved PR based publication process. Do not disable branch protection just to make the workflow pass.
+Supabase remains the account, organization, device, policy, command and audit control plane. Cloudflare handles release distribution and large/private archive delivery.
 
-Application source can stay private. The public feed and release executable are sufficient for clients. This package includes the source for your own development.
+## Current release hold
 
-## Each new version
+No production 1.11 release should be published yet.
 
-1. Set `appVersion` in `src/update_core.go` to a higher semantic version, such as `1.8.1`.
-2. Run `build.ps1` on Windows. Test startup and the update flow before distributing.
-3. If using a signing certificate, sign the final executable before publishing. The manifest must describe the final signed bytes. Certificate signing and publisher certificate enforcement are not implemented in this preview.
-4. Draft a GitHub release tagged `v1.8.1`. Attach the newly built file with the exact name `QuantumGuard.exe` and write release notes. Mark previews as prereleases.
-5. Publish the release. The workflow downloads and verifies the asset, then updates `releases/latest.json`. A stable release also updates `releases/latest-stable.json`.
-6. Check the workflow completed successfully. If the executable was attached after publication, run the workflow manually with the tag or edit the release to trigger it again.
+The staging Worker has been updated and tested from the Cloudflare-enabled development session, but the exact live Worker source still needs to be synchronized into this Git branch. The file:
 
-Keep version numbers increasing. Existing clients compare semantic versions and never install a release whose version is equal to or older than their own. The workflow also refuses to replace the feed with an older release. Existing releases should not be reused for different builds.
+`cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md`
 
-Once the feed changes, connected clients receive the update on their next startup check or hourly check. Offline computers receive it after reconnecting and checking. Users can check immediately through Settings > Updates.
+intentionally blocks deployment from GitHub until that synchronization is complete.
 
-## Initial rollout
+Automatic installer execution also remains disabled until trusted Windows signing and live Windows upgrade/rollback QA are complete.
 
-Old v1.6 and v1.7 installations without updater support need the new executable once through your normal distribution method. Publishing a release cannot add an updater to an already installed executable that has no update code.
+## Cloudflare release publication order
 
-This package identifies itself as 1.8.0 and will ignore the current 1.7.0 manifest. Use 1.8.1 or higher for the first update test after installing this package.
+For a production Windows release:
 
-## Feed fields
+1. Build the exact WinUI + Go payload from the committed release source.
+2. Run the full automated test suite.
+3. Authenticode-sign the first-party binaries with the trusted production publisher identity.
+4. Verify signatures, publisher identity and RFC3161 timestamps.
+5. Build the versioned Windows installer from the signed payload.
+6. Authenticode-sign and verify the final installer.
+7. Compute SHA-256 and exact byte size from the **final signed installer**.
+8. Build the release manifest for the intended channel/platform.
+9. Sign the manifest using the release-signing key.
+10. Upload the installer/package to the private R2 distribution bucket.
+11. Verify the staged package can be downloaded only through the intended Worker path.
+12. Re-download the staged package and verify size, SHA-256 and Authenticode again.
+13. Publish the signed manifest **last**.
+14. Verify one preview device checks, downloads, installs, acknowledges first-start health and remains stable.
+15. Expand rollout only after the canary passes.
 
-The workflow computes `sha256` and `size` from the actual downloadable Windows x64 executable. It copies the version, channel and notes from the published release. The client accepts only `https://github.com/typchris/Quantum-Guard/releases/download/<matching-tag>/QuantumGuard.exe` and approved GitHub HTTPS download redirects.
+Never reuse a version number for different bytes.
 
-Publishing a source commit does not build or publish a release in this release-only repository. Publish the executable release to notify users.
+## Client verification requirements
 
-## Recovery
+Before an installer may execute, the Windows client must reject an update when any of these checks fail:
 
-The old executable remains as `previous.exe` inside the corresponding `.qg-update-*` folder beside the app. Automatic rollback covers replacement failure and failure to reach the initial startup health signal. It does not promise recovery from every later application failure, disk failure, antivirus lock or Windows shutdown.
+- manifest signature
+- trusted key ID
+- manifest expiry/freshness rules
+- semantic version / downgrade protection
+- channel
+- platform/architecture
+- trusted Worker/download origin
+- expected package path/filename rules
+- declared size
+- SHA-256
+- trusted Authenticode signature/publisher
+- installer handoff authorization
 
-To recover manually, exit Quantum Guard and its watchdog normally, restore `previous.exe` to the original application path as `QuantumGuard.exe`, then launch it. Preserve the original icon and user configuration. Keep recent backups until the new version has been verified.
+A download that fails verification must remain non-executable.
 
-GitHub API reference used for release asset metadata:
-https://docs.github.com/en/rest/releases/assets
+## Rollback
+
+The versioned installer retains the previous version and does not permanently select the new startup path until the new version reaches the first-start health acknowledgement.
+
+The Windows acceptance suite must cover:
+
+- successful health acknowledgement
+- missing/late acknowledgement
+- immediate process failure
+- invalid/corrupt package
+- interrupted install
+- startup/service migration failure
+- rollback to the previous version
+
+Do not treat a successful file copy as a successful update.
+
+## Cloudflare credentials
+
+Release automation must not use a broad human/agent token.
+
+Use separate credentials for:
+
+- Worker deployment: `CLOUDFLARE_WORKER_DEPLOY_TOKEN`
+- R2 publishing: bucket-limited R2 S3 credentials
+
+Keep release-signing keys separate from Cloudflare credentials.
+
+No Cloudflare token, R2 secret, release-signing private key, PFX or signing password belongs in the desktop/mobile client or repository.
+
+## GitHub source repository
+
+The application source repository is now private.
+
+That means anonymous `raw.githubusercontent.com`, GitHub Release asset, and GitHub API URLs from this repository are no longer valid public runtime/update dependencies. Preview.4 and all future clients must use Cloudflare for public update/package delivery.
+
+The legacy GitHub feed remains in the private repository only as an internal compatibility/reference path. Existing external clients that depended on anonymous GitHub URLs will not be able to use it after the repository visibility change.
+
+## Legacy GitHub feed
+
+`.github/workflows/publish-update-manifest.yml` now requires a manual dispatch and explicit confirmation.
+
+It exists only for controlled compatibility with older single-EXE clients that still understand:
+
+- `releases/latest.json`
+- `releases/latest-stable.json`
+- GitHub release asset `QuantumGuard.exe`
+
+Publishing or editing a GitHub release no longer automatically changes this legacy feed on the hardening branch.
+
+Do not use the legacy workflow for the 1.11 multi-file installer.
+
+## Staging rule
+
+The staging update feeds should continue to return no release until a deliberately prepared, signed preview package is ready for end-to-end installer testing.
+
+Production and staging credentials, R2 buckets, manifests and release channels should remain distinct.
+
+
+## Older installed clients
+
+Because the GitHub source repository is already private, older clients that only know anonymous GitHub raw/release URLs may no longer auto-update.
+
+Do not embed private-repository credentials in those clients.
+
+Use the one-time migration plan in `docs/LEGACY_CLIENT_MIGRATION.md` for builds that do not already trust the Cloudflare update path.

@@ -8,7 +8,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/typchris/Quantum-Guard/releases"><img alt="GitHub release" src="https://img.shields.io/github/v/release/typchris/Quantum-Guard?include_prereleases&style=flat-square"></a>
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-2563EB?style=flat-square">
   <img alt="Status" src="https://img.shields.io/badge/status-development%20preview-7C3AED?style=flat-square">
 </p>
@@ -17,7 +16,7 @@
 
 Quantum Guard is being developed as a central control platform for application restrictions, focus sessions, schedules, website protection, download controls, device enrollment, and administrator managed policies.
 
-The project is currently in active development. The connected cloud control plane now includes device-specific roles, profile context, heartbeat, remote commands and account-control groundwork. The built-in updater is also implemented in the current development line. Public GitHub releases should still be treated as preview builds until the integrated Windows flow completes live desktop QA.
+The project is currently in active development. The connected cloud control plane includes device-specific roles, profile context, heartbeat, remote commands and hardened account control. The source repository is private. The 1.11 development line is migrating update/package distribution to signed Cloudflare manifests and private R2 delivery. Production update publication remains disabled until Windows installer, rollback and trusted-code-signing QA are complete.
 
 ## Core capabilities
 
@@ -31,18 +30,18 @@ The project is currently in active development. The connected cloud control plan
 | Cloud control | Supabase backed identities, organizations, devices, policies, and commands |
 | Device enrollment | Organization membership plus pairing code enrollment |
 | Administration | Separate administrator and managed client experiences |
-| Updates | Built-in verified GitHub release checks and background downloads in the current development line |
+| Updates | Signed Cloudflare manifest checks, verified package downloads, versioned installer and rollback work in the current development line |
 
-## Public preview
+## Development preview
 
-The current GitHub release is marked as a prerelease while Quantum Guard is still being tested.
+Quantum Guard 1.11 preview builds are still under controlled QA. The private source repository is not a public download channel, and the production Cloudflare update feed is intentionally unpublished.
 
 Before using a preview build on an important computer:
 
 1. Back up your Quantum Guard configuration.
-2. Review the release notes.
-3. Verify the SHA256 digest shown by GitHub for the executable.
-4. Test the build on a non critical device first.
+2. Review the matching build notes and test report.
+3. Verify the published SHA-256 for the exact preview package.
+4. Test the build on a non-critical device first.
 
 ## Cloud architecture
 
@@ -56,7 +55,7 @@ Quantum Guard uses Supabase as its cloud control plane for:
 * Pairing codes
 * Remote commands
 * Activity events
-* Release metadata
+* Release/update metadata
 
 
 ## Administrator and client roles
@@ -83,11 +82,11 @@ Assigned policy
 
 ## Releases
 
-Download preview builds from the official GitHub Releases page:
+The source repository is private and is no longer the public application-distribution path.
 
-**https://github.com/typchris/Quantum-Guard/releases**
+Quantum Guard 1.11 is moving release delivery to Cloudflare Worker + private R2 with signed manifests. Production release publication is currently held while trusted Authenticode signing and live Windows installer/rollback acceptance testing are completed.
 
-Do not download Quantum Guard executables from unofficial mirrors.
+Do not distribute internal preview packages as production releases.
 
 ## Security
 
@@ -95,7 +94,7 @@ Security issues should not be posted publicly with sensitive reproduction detail
 
 ## Support and feedback
 
-For bugs, use the repository issue templates so reports include the Windows version, Quantum Guard version, reproduction steps, and screenshots where useful.
+For bugs during private development, use the repository issue templates when you have repository access so reports include the Windows version, Quantum Guard version, reproduction steps, and screenshots where useful.
 
 ## Development status
 

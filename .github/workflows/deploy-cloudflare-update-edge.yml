@@ -1,0 +1,66 @@
+name: Deploy Quantum Guard update edge
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_source_synced:
+        description: "Type yes only after deployed Cloudflare Worker source has been synced to this branch"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quantum-guard-cloudflare-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_source_synced == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: cloudflare-staging
+    defaults:
+      run:
+        working-directory: cloudflare/update-edge
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Refuse stale Worker source
+        shell: bash
+        run: |
+          if [ -e SOURCE_SYNC_REQUIRED.md ]; then
+            echo "::error::Cloudflare Worker source is not synchronized with the live staging deployment."
+            echo "::error::Replace this folder with the reviewed deployed source and remove SOURCE_SYNC_REQUIRED.md in the same commit."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+
+      - name: Require locked dependencies
+        shell: bash
+        run: |
+          test -s package-lock.json || {
+            echo "::error::Synchronized Worker source must include package-lock.json."
+            exit 1
+          }
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate Worker
+        run: npm run check
+
+      - name: Deploy Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKER_DEPLOY_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
