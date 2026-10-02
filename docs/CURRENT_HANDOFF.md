@@ -211,3 +211,11 @@ Rollback-only regression result:
 - PASS: frequent identical heartbeats are coalesced while real metadata changes write immediately
 
 This reduces database write/WAL/Realtime churn but does **not** replace the required preview.4 source change to approximately 10-minute heartbeats, 10–15-minute policy fallback, event-driven immediate refresh, and exponential backoff.
+
+### Updated preview.4 QA package handoff
+
+A QA-only package was produced from the supplied preview.4 binaries as `QuantumGuard-1.11.0-preview.4-updated-QA-x64.zip` with SHA-256 `9ece140a2fbdf69ebf84a61b5600e6d8d201890085d9518f3a3c105211a07b79`.
+
+The package preserves the supplied preview.4 enforcement binaries and applies only same-length diagnostic wording patches (`summary` -> `report`), updated preview.4 documentation, and packaging hygiene. It does **not** replace the missing source sync. Port the wording into the exact WinUI/Go source rather than treating the binary patch as authoritative source.
+
+The package deliberately does not binary-patch cloud polling, add a fake `View what will be sent` control, migrate R2 to B2, convert to stable 1.11.0, or replace branding. Those remain source/infrastructure/release-gated work.
