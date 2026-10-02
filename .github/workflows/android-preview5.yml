@@ -60,7 +60,7 @@ jobs:
           g = re.sub(r'compileSdk(?:Version)?\\s+35\\b', 'compileSdk 36', g)
           g = re.sub(r'targetSdk(?:Version)?\\s+35\\b', 'targetSdk 36', g)
           if "QueryAllPackagesPermission" not in g:
-              g += "\\nandroid { lint { disable 'QueryAllPackagesPermission' } }\\n"
+              g += "\nandroid { lint { disable 'QueryAllPackagesPermission' } }\n"
           gradle.write_text(g, encoding="utf-8")
           PY
       - uses: actions/setup-java@v4
