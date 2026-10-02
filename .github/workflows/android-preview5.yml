@@ -34,7 +34,13 @@ jobs:
           gradle-version: '8.13'
       - name: Build QA APK
         working-directory: android
-        run: gradle --no-daemon clean :app:assembleDebug :app:lintDebug
+        run: |
+          gradle --no-daemon clean :app:assembleDebug
+          if ! gradle --no-daemon :app:lintDebug; then
+            echo "===== FULL ANDROID LINT REPORT ====="
+            cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt || true
+            exit 1
+          fi
       - name: Verify APK
         working-directory: android
         run: |
