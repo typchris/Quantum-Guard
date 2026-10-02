@@ -5,7 +5,7 @@ on:
     branches:
       - android/preview5
     paths:
-      - "android/QuantumGuard-1.11.0-preview.5-source.zip.b64"
+      - "android/source_parts/**"
       - ".github/workflows/android-preview5.yml"
   workflow_dispatch:
 
@@ -46,12 +46,12 @@ jobs:
         with:
           gradle-version: "9.6.0"
 
-      - name: Extract Quantum Guard Android source
+      - name: Reconstruct Quantum Guard Android source
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/qg-android"
-          base64 -d android/QuantumGuard-1.11.0-preview.5-source.zip.b64 > "$RUNNER_TEMP/qg-source.zip"
-          unzip -q "$RUNNER_TEMP/qg-source.zip" -d "$RUNNER_TEMP/qg-android"
+          cat android/source_parts/part* | base64 -d > "$RUNNER_TEMP/qg-source.tgz"
+          tar -xzf "$RUNNER_TEMP/qg-source.tgz" -C "$RUNNER_TEMP/qg-android"
           test -f "$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5/settings.gradle"
 
       - name: Build and test
