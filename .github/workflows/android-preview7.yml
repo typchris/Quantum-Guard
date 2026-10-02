@@ -108,7 +108,7 @@ jobs:
             fi
           fi
 
-          rm -f app/src/main/res/xml/accessibility_service_config.xml.rej
+          rm -f app/src/main/res/xml/accessibility_service_config.xml.rej app/src/main/res/xml/accessibility_service_config.xml.orig
           cat > app/src/main/res/xml/accessibility_service_config.xml <<'XML'
           <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
               android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeViewClicked|typeWindowContentChanged"
