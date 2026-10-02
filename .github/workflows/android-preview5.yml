@@ -55,6 +55,7 @@ jobs:
           test -f "$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5/settings.gradle"
           sed -i 's/compileSdk 37/compileSdk 36/; s/targetSdk 37/targetSdk 36/' "$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5/app/build.gradle"
           sed -i 's/android.useAndroidX=false/android.useAndroidX=true/' "$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5/gradle.properties"
+          sed -i 's/com.squareup.okhttp3:okhttp:5.5.0/com.squareup.okhttp3:okhttp:4.12.0/' "$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5/app/build.gradle"
 
       - name: Build and test
         shell: bash
