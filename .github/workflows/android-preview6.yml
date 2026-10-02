@@ -87,7 +87,8 @@ jobs:
             "$QG_SRC/app/src/main/java/com/quantumguard/android/UpdateChecker.java" \
             "$QG_SRC/app/src/main/java/com/quantumguard/android/DnsVpnService.java" \
             "$QG_SRC/app/src/main/java/com/quantumguard/android/QGAccessibilityService.java" \
-            "$QG_SRC/app/src/main/java/com/quantumguard/android/UnlockActivity.java"
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/UnlockActivity.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/PinStore.java"
 
           grep -q "versionName '1.11.0-preview.6'" "$QG_SRC/app/build.gradle"
           test -f "$QG_SRC/app/src/main/java/com/quantumguard/android/BrowserPolicyManager.java"
