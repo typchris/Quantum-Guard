@@ -27,7 +27,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android SDK 37
+      - name: Install Android SDK 36
         shell: bash
         run: |
           SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
@@ -39,7 +39,7 @@ jobs:
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-37" "build-tools;37.0.0"
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle 9.6.0
         uses: gradle/actions/setup-gradle@v4
@@ -53,6 +53,7 @@ jobs:
           cat android/source_parts/part* | base64 -d > "$RUNNER_TEMP/qg-source.tgz"
           tar -xzf "$RUNNER_TEMP/qg-source.tgz" -C "$RUNNER_TEMP/qg-android"
           test -f "$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5/settings.gradle"
+          sed -i 's/compileSdk 37/compileSdk 36/; s/targetSdk 37/targetSdk 36/' "$RUNNER_TEMP/qg-android/QuantumGuard-Android-1.11.0-preview.5/app/build.gradle"
 
       - name: Build and test
         shell: bash
