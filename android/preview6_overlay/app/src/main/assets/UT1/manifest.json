@@ -1,0 +1,62 @@
+{
+  "provider": "Université Toulouse Capitole / Fabrice Prigent and contributors",
+  "source": "https://dsi.ut-capitole.fr/blacklists/",
+  "license": "CC BY-SA 4.0",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "retrieved": "2026-09-30",
+  "modifications": "Domain files only; IDNA normalization, invalid/local/IP rejection, sorting and deduplication; mapped categories as recorded. No URL-path records included.",
+  "categories": {
+    "adult": {
+      "count": 4590339,
+      "bytes": 124370898,
+      "rejected": 8942,
+      "sha256": "36011295fbcbb054ebd40bbde2e05349047f075e6755f51ad7a0eb72fc501a28",
+      "sources": [{"url":"https://dsi.ut-capitole.fr/blacklists/download/adult.tar.gz","sha256":"d2766690619a79c9bd3a1d8a54f420354fa7094ca0401211ace23167e9323d0b"}]
+    },
+    "gambling": {
+      "count": 38243,
+      "bytes": 707690,
+      "rejected": 14,
+      "sha256": "e3f0f272165070cdafda270830a07139d132f5a8cee40e50df41f13fbe956055",
+      "sources": [{"url":"https://dsi.ut-capitole.fr/blacklists/download/gambling.tar.gz","sha256":"db0ed00704bfe89bf377a13db0fd375998afaf0748912a4df11f7a9b14afa75d"}]
+    },
+    "gaming": {
+      "count": 33652,
+      "bytes": 555888,
+      "rejected": 89,
+      "sha256": "6337d6e5b9fae92038a4b0ecd527114751fc1fcaa2f0ea7aeda22a3a66ac85bc",
+      "sources": [{"url":"https://dsi.ut-capitole.fr/blacklists/download/games.tar.gz","sha256":"8b25d092107f7f6f600d5dfb52f92a2d16d6eeb2a496db085fe3ed754c82458a"}]
+    },
+    "social": {
+      "count": 902,
+      "bytes": 12364,
+      "rejected": 73,
+      "sha256": "98a4cfd8e377aab38932ae56116862b9d4f102cac56bb65b9ecc114b420db486",
+      "sources": [
+        {"url":"https://dsi.ut-capitole.fr/blacklists/download/social_networks.tar.gz","sha256":"5ade154fbec3a2e164a33707bc6f947419478b79e7140032be9a6bbf05f0320a"},
+        {"url":"https://dsi.ut-capitole.fr/blacklists/download/chat.tar.gz","sha256":"e5e48f8319b999fbf47dd25c49a99c156c829ab491bf041c8750fe87fc031ded"}
+      ]
+    },
+    "streaming": {
+      "count": 4085,
+      "bytes": 63621,
+      "rejected": 96,
+      "sha256": "f951b9a9ccb83fc8b5814daece683203b272424724448d0116fa70340b57222d",
+      "sources": [
+        {"url":"https://dsi.ut-capitole.fr/blacklists/download/audio-video.tar.gz","sha256":"4c5f5ee6fa8bfbbf1cdea1844b4fd5f8857467e7e980d1d336d58feb3ba62633"},
+        {"url":"https://dsi.ut-capitole.fr/blacklists/download/radio.tar.gz","sha256":"c624911c3b3602fd0527cb64c8b0ed2bd1d06aea5843d3885db05d393f3316fa"}
+      ]
+    },
+    "vpn": {
+      "count": 114304,
+      "bytes": 1948195,
+      "rejected": 22551,
+      "sha256": "7b9df4a295ed2fdb33e636b749f9fc6fc4ff86338f7e8c84751a4c568ee5c463",
+      "sources": [
+        {"url":"https://dsi.ut-capitole.fr/blacklists/download/vpn.tar.gz","sha256":"2d872e1e2e45ddfabd95e88eb8985240d3a5369ef9cbccb414f89572d7ad8b64"},
+        {"url":"https://dsi.ut-capitole.fr/blacklists/download/redirector.tar.gz","sha256":"b3390dcb3cd493e68f121d587afc36a46c7529345fa6c3f85dfaa32a3d81a8e3"},
+        {"url":"https://dsi.ut-capitole.fr/blacklists/download/residential-proxies.tar.gz","sha256":"7a72b0f48f33b8abfc1eb201b1b5c330d778e19095febfad911f1f9d8601d7f6"}
+      ]
+    }
+  }
+}
