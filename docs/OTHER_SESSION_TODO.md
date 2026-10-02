@@ -76,6 +76,8 @@ Run these on real Chrome and Edge with `chrome://policy` / `edge://policy` visib
 
 The uploaded preview.4 engine still runs heartbeat, policy fallback, and command polling together at roughly 60-second intervals.
 
+**Server-side mitigation now live:** `device_heartbeat` coalesces identical device/profile writes to roughly one write every 8 minutes while preserving immediate writes for changed version/host/user/OS/control-derived status. This reduces database write churn only; it does not reduce the client's network request frequency. Preserve migration `20261002010810_quantum_guard_coalesce_frequent_heartbeats.sql` and its regression test.
+
 In the exact Go source, separate those concerns:
 
 - device heartbeat: approximately every 10 minutes
