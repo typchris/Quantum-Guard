@@ -102,6 +102,21 @@ Live rollback-only tests currently cover:
 - suspended administrator denial
 - inactive user own-device status visibility
 
+## Automatic retention
+
+A service-role-only `run_quantum_guard_retention_cleanup()` function is scheduled daily through pg_cron.
+
+It removes:
+
+- pairing codes expired more than one day ago, plus used codes older than one day
+- completed/failed/expired device commands older than 30 days
+- routine/info device events older than 30 days
+- unassigned policy versions older than 30 days only when a newer same-organization/same-name version exists
+
+The existing daily expired `report_archives` metadata job remains active separately. The cleanup never deletes from Supabase-managed Auth tables.
+
+A rollback-only regression verifies intended stale records are deleted while critical events and the assigned current policy remain.
+
 ## Remaining account-level warning
 
 Leaked-password protection remains disabled. Google OAuth is the current primary sign-in path, so this is not a reason to weaken or replace the existing auth model. Revisit it when password authentication is intentionally offered or the Supabase plan/features change.
@@ -121,6 +136,6 @@ The three missing foreign-key indexes were added for:
 
 The six RLS auth-initplan warnings were removed by evaluating `auth.uid()` through scalar subqueries in the affected policies. The performance advisor now reports only unused-index informational findings, which should not be acted on while the dataset is still small because many of those indexes support expected future access paths.
 
-All five stored rollback-only regressions passed again after the grant/index/RLS changes.
+The stored security regressions, including the new retention cleanup test, pass after the current hardening changes.
 
 - The live account-control HTTP boundary rejects oversized request bodies above 16 KiB and validates target UUID/status before calling the database RPC.
