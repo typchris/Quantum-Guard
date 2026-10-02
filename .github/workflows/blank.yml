@@ -124,6 +124,49 @@ jobs:
               raise SystemExit("Supabase JS must use an exact tested version")
           PY
 
+      - name: Reject Supabase platform-log polling in runtime source
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          markers = [
+              "edge_logs",
+              "postgres_logs",
+              "auth_logs",
+              "function_logs",
+              "realtime_logs",
+              "query_logs",
+              "/logs/explorer",
+              "analytics/endpoints/logs",
+          ]
+          runtime_exts = {".go", ".cs", ".java", ".kt", ".kts", ".ts", ".js", ".py", ".ps1", ".sh"}
+          skip_parts = {".git", ".github", "docs"}
+          findings = []
+
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in runtime_exts:
+                  continue
+              if any(part in skip_parts for part in path.parts):
+                  continue
+              try:
+                  content = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              for marker in markers:
+                  if marker in content:
+                      findings.append(f"{path}: {marker}")
+
+          if findings:
+              raise SystemExit(
+                  "Quantum Guard runtime/source automation must not poll Supabase platform logs. "
+                  "Use application tables/RPCs for runtime state and targeted manual log queries only:\n"
+                  + "\n".join(findings)
+              )
+
+          print("No Supabase platform-log polling markers found in runtime source.")
+          PY
+
       - name: Reject private-GitHub runtime update dependencies
         shell: bash
         run: |
@@ -278,6 +321,7 @@ jobs:
           test -s UPDATES.md
           test -s docs/CURRENT_HANDOFF.md
           test -s docs/CLOUDFLARE_RELEASE_CREDENTIALS.md
+          test -s docs/SUPABASE_LOG_USAGE_POLICY.md
 
 
       - name: Enforce ready-for-review source synchronization gates
