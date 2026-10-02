@@ -1,0 +1,105 @@
+name: Android Preview 6 QA
+
+on:
+  push:
+    branches: [ android-preview6 ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-preview6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Reconstruct Preview 6 source
+        shell: bash
+        run: |
+          cat android-preview6/source_parts/part* | tr -d '\n\r' | base64 --decode > "$RUNNER_TEMP/qg-preview6.zip"
+          echo "e01aca9ac17a17dabe9dcaa511488fbcd950b0e76fde191a2e1ae55dafebd0d8  $RUNNER_TEMP/qg-preview6.zip" | sha256sum -c -
+          rm -rf android
+          mkdir android
+          unzip -q "$RUNNER_TEMP/qg-preview6.zip" -d android
+          grep -q "1.11.0-preview.6" android/app/build.gradle
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 9.6
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Build full web and ad blocklists
+        working-directory: android
+        run: |
+          python3 scripts/build_blocklists.py
+          test -s app/src/main/assets/adaway.qgh
+          test -s app/src/main/assets/UT1/adult.qgh
+          test -s app/src/main/assets/UT1/gambling.qgh
+          test -s app/src/main/assets/UT1/gaming.qgh
+          test -s app/src/main/assets/UT1/social.qgh
+          test -s app/src/main/assets/UT1/streaming.qgh
+          test -s app/src/main/assets/UT1/vpn.qgh
+          test "$(stat -c%s app/src/main/assets/UT1/adult.qgh)" -gt 30000000
+
+      - name: Build and lint Preview 6
+        working-directory: android
+        run: gradle --no-daemon clean :app:assembleDebug :app:lintDebug
+
+      - name: Verify APK and enforcement payload
+        working-directory: android
+        shell: bash
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.6'"
+
+          unzip -l "$APK" | grep -q 'assets/adaway.qgh'
+          unzip -l "$APK" | grep -q 'assets/UT1/adult.qgh'
+          unzip -l "$APK" | grep -q 'assets/UT1/gambling.qgh'
+          unzip -l "$APK" | grep -q 'assets/UT1/gaming.qgh'
+          unzip -l "$APK" | grep -q 'assets/UT1/social.qgh'
+          unzip -l "$APK" | grep -q 'assets/UT1/streaming.qgh'
+          unzip -l "$APK" | grep -q 'assets/UT1/vpn.qgh'
+
+          test "$(stat -c%s "$APK")" -gt 30000000
+
+          unzip -p "$APK" classes.dex | strings | grep -q 'DownloadRestrictions'
+          unzip -p "$APK" classes.dex | strings | grep -q 'block_app_installs'
+          unzip -p "$APK" classes.dex | strings | grep -q 'DISALLOW_INSTALL_APPS'
+          unzip -p "$APK" classes.dex | strings | grep -q 'refresh_app_inventory'
+
+          cp "$APK" QuantumGuard-Android-1.11.0-preview.6-QA.apk
+          sha256sum QuantumGuard-Android-1.11.0-preview.6-QA.apk | tee QuantumGuard-Android-1.11.0-preview.6-QA.sha256
+
+      - name: Upload verified Preview 6 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuantumGuard-Android-1.11.0-preview.6-QA
+          path: |
+            android/QuantumGuard-Android-1.11.0-preview.6-QA.apk
+            android/QuantumGuard-Android-1.11.0-preview.6-QA.sha256
+            android/app/build/reports/lint-results-debug.html
+            android/RELEASE_NOTES_PREVIEW_6.md
+            android/QA_CHECKLIST_PREVIEW_6.md
+          retention-days: 30
+          if-no-files-found: error
