@@ -57,6 +57,46 @@ After the source is committed, rerun:
 - private-repository runtime URL scan
 - diagnostic upload success path where Supabase returns an empty success response
 
+## 1B. Preview.4 protection regressions
+
+Preserve and verify the exact user-facing fixes already reported in the preview.4 engine:
+
+- Quantum Guard running + Web Protection ON: loopback proxy filters.
+- Quantum Guard running + Web Protection OFF: proxy remains alive in pass-through mode and normal browsing works.
+- Browser proxy policy is removed only when the Quantum Guard engine actually exits through its authorized exit path.
+- Startup repairs stale Quantum Guard-owned proxy state after an abnormal stop without overwriting unrelated enterprise proxy settings.
+- Download Guard ON + `all`: Quantum Guard Chrome/Edge block-all policy is active.
+- Download Guard ON + `risky`: block-all policy is removed; risky completed files are quarantined.
+- Download Guard OFF: all Quantum Guard-owned Chrome/Edge download restrictions are removed immediately.
+- Startup removes stale Quantum Guard download policies whenever Download Guard is OFF.
+
+Run these on real Chrome and Edge with `chrome://policy` / `edge://policy` visible during transitions.
+
+## 1C. Cloud polling redesign
+
+The uploaded preview.4 engine still runs heartbeat, policy fallback, and command polling together at roughly 60-second intervals.
+
+In the exact Go source, separate those concerns:
+
+- device heartbeat: approximately every 10 minutes
+- policy fallback: approximately every 10-15 minutes
+- admin changes/commands: event-driven immediate refresh via Supabase Realtime/Broadcast or the existing Cloudflare path where practical
+- repeated failures: exponential backoff with a sensible cap and reset after success
+- keep a fallback poll so missed/offline notifications eventually recover
+
+Add timing/backoff tests and verify the resulting request rate stays comfortably within the intended free-service limits.
+
+## 1D. Diagnostic UI and safe payload
+
+Update the WinUI source to:
+
+- label the action `Send diagnostic report`
+- add `View what will be sent`
+- show: `Send diagnostic report securely to your Quantum Guard administrator. Reports are private and automatically deleted after 30 days.`
+- make the preview show the exact payload before upload
+
+The payload may contain only bounded technical data such as version/build, Windows version, protection feature states, engine/service state, cloud/enrollment state, and relevant Quantum Guard error summaries. It must never include passwords, Supabase/Google tokens, browsing history, personal files, Vault contents, administrator credentials, or arbitrary log/file contents.
+
 ## 1A. Verify legacy-client migration
 
 Read `docs/LEGACY_CLIENT_MIGRATION.md`.
@@ -100,6 +140,14 @@ Only after the GitHub source matches the reviewed deployed Worker:
 
 The workflow must remain manual and must continue using `CLOUDFLARE_WORKER_DEPLOY_TOKEN`.
 
+## 2A. Diagnostic object storage decision
+
+The current QA Worker uses private Cloudflare R2 for report objects. The requested production target is Cloudflare Worker gateway -> private Backblaze B2 object storage -> Supabase metadata/authorization.
+
+Do not invent or commit B2 credentials. If B2 is selected for production, create a private B2 bucket/app key outside the client, store the credentials only as Worker/server secrets, keep 30-day deletion enforcement, and verify admins access reports only through `Cloud & Devices > Diagnostics`.
+
+Until B2 credentials and the exact live Worker source are available, keep the working private R2 staging path rather than breaking diagnostics.
+
 ## 3. Synchronize the tested installer integration
 
 The GitHub installer foundation is also deliberately blocked because the other session reported newer preview.4 handoff/health behavior.
@@ -124,6 +172,12 @@ Verify:
 - fixed `Program Files\\Quantum Guard` install root
 - refusal to recursively uninstall from an unexpected/tampered install root
 - rollback rejection of invalid version/path traversal values
+
+## 3A. Automatic retention — completed on Supabase
+
+The live database now has daily service-role-only cleanup for expired/used pairing codes, completed/failed/expired commands older than 30 days, routine/info events older than 30 days, and superseded unassigned policy versions. The existing expired report-archive metadata cleanup remains separate. Auth tables are untouched.
+
+The rollback-only retention regression passes. Preserve migration `20261002001113_quantum_guard_automatic_retention_cleanup.sql` and its regression test when synchronizing source.
 
 ## 4. Cloudflare token replacement
 
@@ -189,6 +243,18 @@ Before enabling automatic installation, test on real Windows:
 - bad SHA-256 rejection
 - wrong platform/version rejection
 - Authenticode failure rejection once signing is configured
+
+## 7A. Stable 1.11.0 conversion — only after QA
+
+Do not perform this while preview.4 QA is incomplete. After all release gates pass:
+
+- version -> `1.11.0`
+- remove WinUI Preview / QA banner text
+- change updater channel from preview to stable
+- preserve settings, enrollment, organizations and policies
+- replace the temporary green `QG` mark with the official Quantum Guard logo in the Control Center, app icon, tray icon, installer, updater, and future mobile packages
+
+Only use an official logo asset that is actually supplied/approved; do not invent a replacement.
 
 ## 8. Release gate
 
