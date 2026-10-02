@@ -94,8 +94,10 @@ jobs:
           # the mobile callback configured for Quantum Guard is quantumguard://auth/callback.
           python3 - <<'PY'
           from pathlib import Path
+          import os
+          root = Path(os.environ["QG_SRC"])
 
-          api = Path("$QG_SRC/app/src/main/java/com/quantumguard/android/SupabaseApi.java")
+          api = root / "app/src/main/java/com/quantumguard/android/SupabaseApi.java"
           t = api.read_text(encoding="utf-8")
           old = '.appendQueryParameter("redirect_to", "quantumguard://auth")'
           new = '.appendQueryParameter("redirect_to", "quantumguard://auth/callback")'
@@ -104,7 +106,7 @@ jobs:
           t = t.replace(old, new)
           api.write_text(t, encoding="utf-8")
 
-          main = Path("$QG_SRC/app/src/main/java/com/quantumguard/android/MainActivity.java")
+          main = root / "app/src/main/java/com/quantumguard/android/MainActivity.java"
           t = main.read_text(encoding="utf-8")
           old = 'if(u==null||!"quantumguard".equalsIgnoreCase(u.getScheme())||!"auth".equalsIgnoreCase(u.getHost()))return;'
           new = 'if(u==null||!"quantumguard".equalsIgnoreCase(u.getScheme())||!"auth".equalsIgnoreCase(u.getHost()))return; String path=u.getPath(); if(path!=null&&!path.isEmpty()&&!"/callback".equalsIgnoreCase(path))return;'
@@ -113,7 +115,7 @@ jobs:
           t = t.replace(old, new)
           main.write_text(t, encoding="utf-8")
 
-          manifest = Path("$QG_SRC/app/src/main/AndroidManifest.xml")
+          manifest = root / "app/src/main/AndroidManifest.xml"
           t = manifest.read_text(encoding="utf-8")
           old = '<data android:scheme="quantumguard" android:host="auth" />'
           new = '<data android:scheme="quantumguard" android:host="auth" android:pathPrefix="/callback" />'
@@ -122,7 +124,7 @@ jobs:
           t = t.replace(old, new)
           manifest.write_text(t, encoding="utf-8")
 
-          gradle = Path("$QG_SRC/app/build.gradle")
+          gradle = root / "app/build.gradle"
           t = gradle.read_text(encoding="utf-8")
           t = t.replace("versionCode 111006", "versionCode 111007")
           t = t.replace("versionName '1.11.0-preview.6'", "versionName '1.11.0-preview.6.1'")
