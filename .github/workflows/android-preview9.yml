@@ -1,0 +1,251 @@
+name: Android Preview 9 Build
+
+on:
+  push:
+    branches:
+      - android/preview9
+    paths:
+      - "android/preview5_verified_source.b64"
+      - "android/preview6_overlay/**"
+      - "android/preview6_overlay_parts/**"
+      - "android/preview7_patch.xz.b64"
+      - "android/preview7_qa_keystore.b64"
+      - "android/preview8_usage_patch.xz.b64"
+      - "android/preview8/**"
+      - "android/preview9/**"
+      - "android/preview9_efficiency.patch"
+      - ".github/workflows/android-preview8.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-preview9-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android-preview8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 | sort -V | tail -1)"
+          fi
+          test -x "$SDKMANAGER"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Reconstruct Preview 6 baseline
+        shell: bash
+        run: |
+          tr -d '\n\r' < android/preview5_verified_source.b64 | base64 --decode > "$RUNNER_TEMP/qg-preview5.zip"
+          echo "da26ba54d464c90bd17bcf5cb79501a0c969b52fb68b682953ebf81094a9b034  $RUNNER_TEMP/qg-preview5.zip" | sha256sum -c -
+          QG_SRC="$RUNNER_TEMP/qg-android"
+          rm -rf "$QG_SRC"
+          mkdir -p "$QG_SRC"
+          unzip -q "$RUNNER_TEMP/qg-preview5.zip" -d "$QG_SRC"
+          test -f "$QG_SRC/settings.gradle"
+
+          cat android/preview6_overlay_parts/part* | base64 -d > "$RUNNER_TEMP/qg-preview6-overlay.txz"
+          echo "7b8cb1f173029074a6df1b653747f84bc26a26571edadb915be544d8ce13a7d1  $RUNNER_TEMP/qg-preview6-overlay.txz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/qg-preview6-overlay.txz" -C "$QG_SRC"
+          cp -a android/preview6_overlay/. "$QG_SRC/"
+
+          rm -f \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/AppConfig.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/Diagnostics.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/DeviceRepository.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/DomainRules.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/PolicyEngine.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/RealtimeClient.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/UpdateChecker.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/DnsVpnService.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/QGAccessibilityService.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/UnlockActivity.java" \
+            "$QG_SRC/app/src/main/java/com/quantumguard/android/PinStore.java"
+
+          grep -q "versionName '1.11.0-preview.6'" "$QG_SRC/app/build.gradle"
+          grep -q 'redirect_to", "quantumguard://auth"' "$QG_SRC/app/src/main/java/com/quantumguard/android/SupabaseApi.java"
+          echo "QG_SRC=$QG_SRC" >> "$GITHUB_ENV"
+
+      - name: Apply Preview 7 enforcement patch
+        shell: bash
+        run: |
+          tr -d '\n\r' < android/preview7_patch.xz.b64 | base64 --decode > "$RUNNER_TEMP/preview7.patch.xz"
+          echo "e09ff6a0b8c3e5762fcb3a4d7e8a7e520dc7992a78713296be864da580b84398  $RUNNER_TEMP/preview7.patch.xz" | sha256sum -c -
+          xz -dc "$RUNNER_TEMP/preview7.patch.xz" > "$RUNNER_TEMP/preview7.patch"
+          cd "$QG_SRC"
+          set +e
+          patch -p1 --batch < "$RUNNER_TEMP/preview7.patch"
+          PATCH_RC=$?
+          set -e
+          if [ "$PATCH_RC" -ne 0 ]; then
+            REJECTS="$(find . -name '*.rej' -print | sort)"
+            EXPECTED="./app/src/main/res/xml/accessibility_service_config.xml.rej"
+            if [ "$REJECTS" != "$EXPECTED" ]; then
+              echo "Unexpected Preview 7 patch rejects:"
+              printf '%s\n' "$REJECTS"
+              exit 1
+            fi
+          fi
+
+          rm -f app/src/main/res/xml/accessibility_service_config.xml.rej app/src/main/res/xml/accessibility_service_config.xml.orig
+          cat > app/src/main/res/xml/accessibility_service_config.xml <<'XML'
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeViewClicked|typeWindowContentChanged"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:notificationTimeout="80"
+              android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+              android:canRetrieveWindowContent="true"
+              android:description="@string/accessibility_description"
+              android:settingsActivity="com.quantumguard.android.MainActivity" />
+          XML
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/res/values/strings.xml")
+          t = p.read_text(encoding="utf-8")
+          if 'name="accessibility_description"' not in t:
+              t = t.replace("</resources>", '    <string name="accessibility_description">Quantum Guard app protection and managed-device enforcement</string>\n</resources>')
+          p.write_text(t, encoding="utf-8")
+          PY
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/quantumguard/android/NotificationUtil.java")
+          t = p.read_text(encoding="utf-8")
+          t = t.replace('if(Build.VERSION.SDK_INT>=26)b.setSilent(true);',
+                        'b.setSound(null); b.setVibrate(new long[]{0L}); b.setOnlyAlertOnce(true);')
+          p.write_text(t, encoding="utf-8")
+          PY
+
+          mkdir -p qa-signing
+          tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview7_qa_keystore.b64" | base64 --decode > qa-signing/quantumguard-preview.jks
+          echo "865ad526f0eba7a8856f54a020c3c7a920639b225e98f0235819fc0e4055bea2  qa-signing/quantumguard-preview.jks" | sha256sum -c -
+
+          python3 scripts/qa_static_checks.py
+          grep -q "versionName '1.11.0-preview.7'" app/build.gradle
+          ! grep -q "POST_NOTIFICATIONS" app/src/main/AndroidManifest.xml
+          grep -q "MANAGE_EXTERNAL_STORAGE" app/src/main/AndroidManifest.xml
+          grep -q "enroll_device_v2" app/src/main/java/com/quantumguard/android/SupabaseApi.java
+          grep -q "recover_my_device_v2" app/src/main/java/com/quantumguard/android/SupabaseApi.java
+          grep -q 'android:pathPrefix="/callback"' app/src/main/AndroidManifest.xml
+
+      - name: Apply Preview 8 UsageStats app blocker
+        shell: bash
+        run: |
+          tr -d '\n\r' < android/preview8_usage_patch.xz.b64 | base64 --decode > "$RUNNER_TEMP/preview8.patch.xz"
+          echo "2d6f8f151e7ea981c75d3ef5e08caa884f9c5207b74358b11cce2139f3353774  $RUNNER_TEMP/preview8.patch.xz" | sha256sum -c -
+          xz -dc "$RUNNER_TEMP/preview8.patch.xz" > "$RUNNER_TEMP/preview8.patch"
+          cd "$QG_SRC"
+          patch -p1 --batch < "$RUNNER_TEMP/preview8.patch"
+          cp "$GITHUB_WORKSPACE/android/preview8/QA_CHECKLIST_PREVIEW_8.md" QA_CHECKLIST_PREVIEW_8.md
+          cp "$GITHUB_WORKSPACE/android/preview8/RELEASE_NOTES_PREVIEW_8.md" RELEASE_NOTES_PREVIEW_8.md
+
+          python3 scripts/qa_static_checks.py
+          grep -q "versionName '1.11.0-preview.8'" app/build.gradle
+          grep -q "android.permission.PACKAGE_USAGE_STATS" app/src/main/AndroidManifest.xml
+          grep -q "android.permission.SYSTEM_ALERT_WINDOW" app/src/main/AndroidManifest.xml
+          grep -q "UsageStatsManager" app/src/main/java/com/quantumguard/android/UsageStatsBlocker.java
+          grep -q "TYPE_APPLICATION_OVERLAY" app/src/main/java/com/quantumguard/android/BlockOverlay.java
+          grep -q "promptStartupSpecialAccess" app/src/main/java/com/quantumguard/android/MainActivity.java
+          ! grep -q "POST_NOTIFICATIONS" app/src/main/AndroidManifest.xml
+
+      - name: Apply Preview 9 Supabase efficiency patch
+        shell: bash
+        run: |
+          cd "$QG_SRC"
+          patch -p1 --batch < "$GITHUB_WORKSPACE/android/preview9_efficiency.patch"
+          cp "$GITHUB_WORKSPACE/android/preview9/QA_CHECKLIST_PREVIEW_9.md" QA_CHECKLIST_PREVIEW_9.md
+          cp "$GITHUB_WORKSPACE/android/preview9/RELEASE_NOTES_PREVIEW_9.md" RELEASE_NOTES_PREVIEW_9.md
+          grep -q "versionCode 111010" app/build.gradle
+          grep -q "versionName '1.11.0-preview.9'" app/build.gradle
+          grep -q "scheduleAtFixedRate(this::publishApps,6,6,TimeUnit.HOURS)" app/src/main/java/com/quantumguard/android/CloudSyncService.java
+
+      - name: Build full protection blocklists
+        shell: bash
+        working-directory: ${{ env.QG_SRC }}
+        run: |
+          python3 scripts/build_blocklists.py
+          test -s app/src/main/assets/adaway.qgh
+          test -s app/src/main/assets/UT1/adult.qgh
+          test -s app/src/main/assets/UT1/gambling.qgh
+          test -s app/src/main/assets/UT1/gaming.qgh
+          test -s app/src/main/assets/UT1/social.qgh
+          test -s app/src/main/assets/UT1/streaming.qgh
+          test -s app/src/main/assets/UT1/vpn.qgh
+          test "$(stat -c%s app/src/main/assets/UT1/adult.qgh)" -gt 1000000
+
+      - name: Unit tests, lint, and APK build
+        shell: bash
+        working-directory: ${{ env.QG_SRC }}
+        run: |
+          gradle --no-daemon clean testDebugUnitTest :app:lintDebug :app:assembleDebug
+
+      - name: Verify Preview 8 APK
+        shell: bash
+        run: |
+          APK="$QG_SRC/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          SIG="$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK")"
+          printf '%s\n' "$SIG"
+          printf '%s\n' "$SIG" | tr -d ':' | tr '[:upper:]' '[:lower:]' | grep -q "13c11e862ad179b58f8b6def377912fd390433c4d98c4669785361f5b60e4beb"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.9'"
+
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions "$APK" > "$RUNNER_TEMP/permissions.txt"
+          ! grep -q "android.permission.POST_NOTIFICATIONS" "$RUNNER_TEMP/permissions.txt"
+          grep -q "android.permission.MANAGE_EXTERNAL_STORAGE" "$RUNNER_TEMP/permissions.txt"
+          grep -q "android.permission.PACKAGE_USAGE_STATS" "$RUNNER_TEMP/permissions.txt"
+          grep -q "android.permission.SYSTEM_ALERT_WINDOW" "$RUNNER_TEMP/permissions.txt"
+
+          unzip -l "$APK" > "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/adaway.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/adult.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/gambling.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/gaming.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/social.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/streaming.qgh" "$RUNNER_TEMP/apk-files.txt"
+          grep -q "assets/UT1/vpn.qgh" "$RUNNER_TEMP/apk-files.txt"
+
+      - name: Prepare QA artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          APK="$QG_SRC/app/build/outputs/apk/debug/app-debug.apk"
+          cp "$APK" artifacts/QuantumGuard-Android-1.11.0-preview.9-QA.apk
+          sha256sum artifacts/QuantumGuard-Android-1.11.0-preview.8-QA.apk > artifacts/QuantumGuard-Android-1.11.0-preview.9-QA.apk.sha256
+          cp "$QG_SRC/QA_CHECKLIST_PREVIEW_9.md" artifacts/
+          cp "$QG_SRC/RELEASE_NOTES_PREVIEW_9.md" artifacts/
+          (cd "$QG_SRC" && zip -qr "$GITHUB_WORKSPACE/artifacts/QuantumGuard-Android-1.11.0-preview.9-source.zip" . -x "app/build/*" "build/*" ".gradle/*" "qa-signing/*")
+
+      - name: Upload Preview 8 QA package
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuantumGuard-Android-1.11.0-preview.9-QA
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
