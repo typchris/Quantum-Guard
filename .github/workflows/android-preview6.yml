@@ -179,7 +179,7 @@ jobs:
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.6'"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.6.1'"
 
           unzip -l "$APK" > "$RUNNER_TEMP/apk-files.txt"
           grep -q "assets/adaway.qgh" "$RUNNER_TEMP/apk-files.txt"
@@ -195,15 +195,15 @@ jobs:
         run: |
           mkdir -p artifacts
           APK="$QG_SRC/app/build/outputs/apk/debug/app-debug.apk"
-          cp "$APK" artifacts/QuantumGuard-Android-1.11.0-preview.6-QA.apk
-          sha256sum artifacts/QuantumGuard-Android-1.11.0-preview.6-QA.apk             > artifacts/QuantumGuard-Android-1.11.0-preview.6-QA.apk.sha256
+          cp "$APK" artifacts/QuantumGuard-Android-1.11.0-preview.6.1-QA.apk
+          sha256sum artifacts/QuantumGuard-Android-1.11.0-preview.6.1-QA.apk             > artifacts/QuantumGuard-Android-1.11.0-preview.6.1-QA.apk.sha256
           cp android/QA_CHECKLIST_PREVIEW_6.md artifacts/
           cp android/RELEASE_NOTES_PREVIEW_6.md artifacts/
 
       - name: Upload Preview 6 QA package
         uses: actions/upload-artifact@v4
         with:
-          name: QuantumGuard-Android-1.11.0-preview.6-QA
+          name: QuantumGuard-Android-1.11.0-preview.6.1-QA
           path: artifacts/*
           if-no-files-found: error
           retention-days: 30
