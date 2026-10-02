@@ -15,7 +15,7 @@ jobs:
       - name: Rebuild Android source archive
         run: |
           tr -d '\n\r' < android-build/source.b64.full | base64 --decode > android-source-preview5.zip
-          echo "d2363124a6a24410ffe4c1819a28914352fe8a59ac68c04d92a77a8f604bcc8c  android-source-preview5.zip" | sha256sum -c -
+          echo "da26ba54d464c90bd17bcf5cb79501a0c969b52fb68b682953ebf81094a9b034  android-source-preview5.zip" | sha256sum -c -
           rm -rf android
           mkdir android
           unzip -q android-source-preview5.zip -d android
