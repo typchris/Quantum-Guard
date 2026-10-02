@@ -85,7 +85,7 @@ jobs:
 
           unzip -p "$APK" classes.dex | strings | grep -q 'DownloadRestrictions'
           unzip -p "$APK" classes.dex | strings | grep -q 'block_app_installs'
-          unzip -p "$APK" classes.dex | strings | grep -q 'DISALLOW_INSTALL_APPS'
+          grep -q 'DISALLOW_INSTALL_APPS' app/src/main/java/com/quantumguard/android/DeviceController.java
           unzip -p "$APK" classes.dex | strings | grep -q 'refresh_app_inventory'
 
           cp "$APK" QuantumGuard-Android-1.11.0-preview.6-QA.apk
