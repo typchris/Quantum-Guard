@@ -129,6 +129,15 @@ jobs:
           p.write_text(t, encoding="utf-8")
           PY
 
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/quantumguard/android/NotificationUtil.java")
+          t = p.read_text(encoding="utf-8")
+          t = t.replace('if(Build.VERSION.SDK_INT>=26)b.setSilent(true);',
+                        'b.setSound(null); b.setVibrate(new long[]{0L}); b.setOnlyAlertOnce(true);')
+          p.write_text(t, encoding="utf-8")
+          PY
+
           mkdir -p qa-signing
           tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview7_qa_keystore.b64" | base64 --decode > qa-signing/quantumguard-preview.jks
           echo "865ad526f0eba7a8856f54a020c3c7a920639b225e98f0235819fc0e4055bea2  qa-signing/quantumguard-preview.jks" | sha256sum -c -
