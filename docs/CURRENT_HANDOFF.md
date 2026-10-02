@@ -198,3 +198,16 @@ The Cloudflare/local-source session has a dedicated checklist at:
 `docs/OTHER_SESSION_TODO.md`
 
 Use that file rather than reconstructing the remaining steps from chat history.
+
+
+### Preview.4 heartbeat load mitigation
+
+The uploaded preview.4 engine still invokes its combined heartbeat/policy/command loop at roughly 60-second intervals, so the full client-side polling redesign remains source-blocked.
+
+As an interim live control-plane mitigation, migration `20261002010810_quantum_guard_coalesce_frequent_heartbeats.sql` coalesces identical device/profile heartbeat writes to roughly one write every 8 minutes while still writing immediately when agent version, host/user/OS metadata, or control-derived device status changes. The caller still receives current context on every RPC call.
+
+Rollback-only regression result:
+
+- PASS: frequent identical heartbeats are coalesced while real metadata changes write immediately
+
+This reduces database write/WAL/Realtime churn but does **not** replace the required preview.4 source change to approximately 10-minute heartbeats, 10–15-minute policy fallback, event-driven immediate refresh, and exponential backoff.
