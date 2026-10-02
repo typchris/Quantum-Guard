@@ -1,0 +1,24 @@
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -21,8 +21,8 @@
+         applicationId 'com.quantumguard.android'
+         minSdk 26
+         targetSdk 36
+-        versionCode 111009
+-        versionName '1.11.0-preview.8'
++        versionCode 111010
++        versionName '1.11.0-preview.9'
+         buildConfigField 'String', 'SUPABASE_URL', '"https://goffrcpfelmgqbidaxhb.supabase.co"'
+         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Ai9ulN52FsMEYmBrJqUPrg_pUhptwrV"'
+         buildConfigField 'String', 'EDGE_BASE_URL', '"https://quantum-guard-downloads-staging.quantum-guard-083d9ce4.workers.dev"'
+--- a/app/src/main/java/com/quantumguard/android/CloudSyncService.java
++++ b/app/src/main/java/com/quantumguard/android/CloudSyncService.java
+@@ -51,7 +51,7 @@
+         exec.scheduleAtFixedRate(this::syncNow,2,15,TimeUnit.MINUTES);
+         exec.scheduleAtFixedRate(this::enforce,10,30,TimeUnit.SECONDS);
+         exec.scheduleWithFixedDelay(this::enforceUsageBlock,0,700,TimeUnit.MILLISECONDS);
+-        exec.scheduleAtFixedRate(this::publishApps,30,30,TimeUnit.MINUTES);
++        exec.scheduleAtFixedRate(this::publishApps,6,6,TimeUnit.HOURS);
+         exec.execute(this::connectRealtime);
+         return START_STICKY;
+     }
