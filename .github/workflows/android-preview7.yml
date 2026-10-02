@@ -120,6 +120,15 @@ jobs:
               android:settingsActivity="com.quantumguard.android.MainActivity" />
           XML
 
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/res/values/strings.xml")
+          t = p.read_text(encoding="utf-8")
+          if 'name="accessibility_description"' not in t:
+              t = t.replace("</resources>", '    <string name="accessibility_description">Quantum Guard app protection and managed-device enforcement</string>\n</resources>')
+          p.write_text(t, encoding="utf-8")
+          PY
+
           mkdir -p qa-signing
           tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview7_qa_keystore.b64" | base64 --decode > qa-signing/quantumguard-preview.jks
           echo "865ad526f0eba7a8856f54a020c3c7a920639b225e98f0235819fc0e4055bea2  qa-signing/quantumguard-preview.jks" | sha256sum -c -
