@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: android-preview6-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android-preview6:
     runs-on: ubuntu-latest
