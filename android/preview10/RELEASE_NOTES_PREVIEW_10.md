@@ -88,17 +88,21 @@ Preview 10 sends a compact capability object with device_heartbeat_v2. The admin
 
 This prevents the administrator UI from implying full enforcement when Android has not granted the required authority.
 
-## Lock and sign-out handling
+## Lock and managed-client channel protection
 
-Lock Device now works with legacy Device Admin and Device Owner/Profile Owner authority where Android permits it.
+Lock Device works with legacy Device Admin and Device Owner/Profile Owner authority where Android permits it.
 
-Remote sign-out acknowledges the command first, clears the cloud session, and stops cloud synchronization without deleting the last locally applied protection policy.
+The fine-tooth security review found that signing a managed Android client out of cloud administration could orphan that endpoint after reboot. Preview 10 therefore rejects the legacy remote sign_out_user command on managed Android clients instead of disconnecting the management channel.
+
+Local Sign Out, re-enrollment and pairing of an already enrolled Android installation are gated by the local device's Owner/Admin authority. A Client role can no longer use those controls to detach itself from administration.
+
+Preview 10 also claims a stable installation identity against the existing device record. The backend enforces uniqueness for claimed platform/installation identities, which strengthens duplicate-device prevention and blocks a claimed installation from silently becoming a second device record in another organization. The claim is made once per installation and is idempotent.
 
 ## Supabase efficiency retained
 
 Preview 10 keeps the existing low-usage design:
 
-* about 10-minute client heartbeat cadence
+* about 10-minute routine client heartbeat cadence, with an immediate coalesced readiness heartbeat after returning from Android special-access settings
 * about 15-minute policy recovery sync
 * event-driven Realtime updates
 * six-hour routine app inventory fallback plus install/remove and on-demand refresh
