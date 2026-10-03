@@ -202,7 +202,7 @@ jobs:
           patch -p1 --batch < "$RUNNER_TEMP/preview10-receiver.patch"
 
           tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview10_managed_client_hardening.patch.xz.b64" > "$RUNNER_TEMP/preview10-managed-client.patch.xz.b64"
-          echo "6d816c293efe7acf304dfb695d4a3c844caac7d698e1d788d4db62ce40c24468  $RUNNER_TEMP/preview10-managed-client.patch.xz.b64" | sha256sum -c -
+          echo "bb10de8a678b57a37a63f9f9368be25cf1e2e194d67e63b072e2eda19ffb6235  $RUNNER_TEMP/preview10-managed-client.patch.xz.b64" | sha256sum -c -
           base64 --decode "$RUNNER_TEMP/preview10-managed-client.patch.xz.b64" > "$RUNNER_TEMP/preview10-managed-client.patch.xz"
           echo "885016ee7d98d346020d0d407864abc7b2aeebc88d764d038f8a097baa8cf2e0  $RUNNER_TEMP/preview10-managed-client.patch.xz" | sha256sum -c -
           xz -t "$RUNNER_TEMP/preview10-managed-client.patch.xz"
