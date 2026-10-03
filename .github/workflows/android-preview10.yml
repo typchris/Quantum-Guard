@@ -241,22 +241,68 @@ jobs:
         run: |
           gradle --no-daemon clean testDebugUnitTest :app:lintDebug
 
-      - name: Provision rotated QA signing identity
+      - name: Provision safe QA signing identity
         shell: bash
         working-directory: ${{ env.QG_SRC }}
         run: |
-          : "${QG_ANDROID_QA_KEYSTORE_B64:?missing QG_ANDROID_QA_KEYSTORE_B64 secret}"
-          : "${QG_ANDROID_QA_STORE_PASSWORD:?missing QG_ANDROID_QA_STORE_PASSWORD secret}"
-          : "${QG_ANDROID_QA_KEY_PASSWORD:?missing QG_ANDROID_QA_KEY_PASSWORD secret}"
-          : "${QG_ANDROID_QA_CERT_SHA256:?missing QG_ANDROID_QA_CERT_SHA256 secret}"
           mkdir -p qa-signing
-          printf '%s' "$QG_ANDROID_QA_KEYSTORE_B64" | base64 --decode > qa-signing/quantumguard-preview.jks
+
+          HAVE_KEYSTORE=0
+          HAVE_STORE_PASS=0
+          HAVE_KEY_PASS=0
+          HAVE_CERT=0
+          [ -n "$QG_ANDROID_QA_KEYSTORE_B64" ] && HAVE_KEYSTORE=1
+          [ -n "$QG_ANDROID_QA_STORE_PASSWORD" ] && HAVE_STORE_PASS=1
+          [ -n "$QG_ANDROID_QA_KEY_PASSWORD" ] && HAVE_KEY_PASS=1
+          [ -n "$QG_ANDROID_QA_CERT_SHA256" ] && HAVE_CERT=1
+          TOTAL=$((HAVE_KEYSTORE + HAVE_STORE_PASS + HAVE_KEY_PASS + HAVE_CERT))
+
+          if [ "$TOTAL" -eq 4 ]; then
+            printf '%s' "$QG_ANDROID_QA_KEYSTORE_B64" | base64 --decode > qa-signing/quantumguard-preview.jks
+            chmod 600 qa-signing/quantumguard-preview.jks
+            test -s qa-signing/quantumguard-preview.jks
+            keytool -list -keystore qa-signing/quantumguard-preview.jks \
+              -storepass "$QG_ANDROID_QA_STORE_PASSWORD" \
+              -alias quantumguard-preview >/dev/null
+
+            EXPECTED_CERT="$(printf '%s' "$QG_ANDROID_QA_CERT_SHA256" | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+            ACTUAL_CERT="$(keytool -list -v -keystore qa-signing/quantumguard-preview.jks -storepass "$QG_ANDROID_QA_STORE_PASSWORD" -alias quantumguard-preview | awk -F': ' '/SHA256:/{gsub(":","",$2); print toupper($2); exit}')"
+            test -n "$ACTUAL_CERT"
+            if [ "$ACTUAL_CERT" != "$EXPECTED_CERT" ]; then
+              echo "::error::Configured QA certificate fingerprint does not match the protected keystore"
+              exit 1
+            fi
+            echo "QG_SIGNING_MODE=protected-rotated-identity" >> "$GITHUB_ENV"
+          elif [ "$TOTAL" -eq 0 ]; then
+            # QA-only fallback. The key exists only for this workflow run and is
+            # never committed or uploaded. Because each run gets a new identity,
+            # an older differently signed QA APK must be uninstalled first.
+            STORE_PASS="$(openssl rand -hex 24)"
+            KEY_PASS="$STORE_PASS"
+            echo "::add-mask::$STORE_PASS"
+            echo "::add-mask::$KEY_PASS"
+
+            keytool -genkeypair -noprompt \
+              -keystore qa-signing/quantumguard-preview.jks \
+              -storepass "$STORE_PASS" \
+              -keypass "$KEY_PASS" \
+              -alias quantumguard-preview \
+              -keyalg RSA -keysize 3072 -validity 3650 \
+              -dname "CN=Quantum Guard Preview 10 Ephemeral QA, OU=QA, O=Quantum Guard, C=TT"
+
+            CERT="$(keytool -list -v -keystore qa-signing/quantumguard-preview.jks -storepass "$STORE_PASS" -alias quantumguard-preview | awk -F': ' '/SHA256:/{gsub(":","",$2); print toupper($2); exit}')"
+            test -n "$CERT"
+            echo "QG_ANDROID_QA_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+            echo "QG_ANDROID_QA_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+            echo "QG_ANDROID_QA_CERT_SHA256=$CERT" >> "$GITHUB_ENV"
+            echo "QG_SIGNING_MODE=ephemeral-fresh-install" >> "$GITHUB_ENV"
+          else
+            echo "::error::QA signing secrets are only partially configured. Configure all four QG_ANDROID_QA_* secrets or none of them."
+            exit 1
+          fi
+
           chmod 600 qa-signing/quantumguard-preview.jks
           test -s qa-signing/quantumguard-preview.jks
-          keytool -list -keystore qa-signing/quantumguard-preview.jks \
-            -storepass "$QG_ANDROID_QA_STORE_PASSWORD" \
-            -alias quantumguard-preview >/dev/null
-          echo "QG_SIGNING_MODE=protected-rotated-identity" >> "$GITHUB_ENV"
 
       - name: Build signed Preview 10 APK
         shell: bash
