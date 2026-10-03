@@ -73,7 +73,7 @@ On the selected Android target confirm the administrator screen reports the actu
 10. blocklist availability.
 11. selected Download Guard folder.
 
-Disable one local prerequisite on the target and confirm the next capability heartbeat reports the limitation.
+Disable one local prerequisite on the target, return to Quantum Guard, and confirm the capability heartbeat refreshes promptly and reports the limitation. Repeated activity/service starts must not create duplicate recurring sync jobs.
 
 ## G. App blocking
 
@@ -84,14 +84,17 @@ Disable one local prerequisite on the target and confirm the next capability hea
 5. Allow the app remotely and confirm it opens again.
 6. Verify Play Store install blocking in the modes supported by the target's management authority.
 
-## H. Lock and sign-out
+## H. Lock, management-channel and enrollment protection
 
 1. Test Lock Now on a device with legacy Device Admin authority.
 2. Test Lock Now on Device Owner/Profile Owner where available.
-3. Confirm unsupported authority is reported clearly instead of showing false success.
-4. Test remote sign-out.
-5. Confirm the target disconnects from cloud administration.
-6. Confirm the last locally applied protection policy remains enforced after sign-out.
+3. Confirm unsupported lock authority is reported clearly instead of showing false success.
+4. On a device whose local effective role is Client, attempt local Sign Out and confirm it is rejected.
+5. On the same Client device, attempt to enroll or pair the already-managed installation into another organization and confirm it is rejected.
+6. Send the legacy remote sign_out_user command and confirm the command fails instead of disconnecting the managed Android endpoint.
+7. Confirm the client remains signed in to the management channel and continues receiving policy updates after the failed sign-out command.
+8. Confirm Preview 10 claims its installation identity once, stores it on the existing device record, and does not create a duplicate device.
+9. Repeat the installation claim and confirm it is idempotent.
 
 ## I. Existing protection regression
 
@@ -110,6 +113,8 @@ Re-test:
 11. Google sign-in.
 12. enrollment and recovery.
 13. duplicate-device prevention.
+14. managed Client resistance to sign-out/re-enrollment bypass.
+15. installation identity claim and recovery.
 
 ## J. Security and package
 
