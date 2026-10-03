@@ -1,0 +1,6 @@
+QuantumGuard-1.11.0-preview.4-x64.zip  d5bee13c77ec988b38d7220dc5f04c78efd02718c85fbbe08492667d4ec9c2af
+QuantumGuard.Engine.exe                 ea1f15565b41292cf860e395bdcb3f6d8d8d5af4da6f5fc6a8b04d9bfb2af857
+QuantumGuard.UI.exe                     f78d32a5a8b04fa206a98a7811425069bb0e9def245054bf1b19af92a76e94b9
+QuantumGuard.UI.dll                     d08d61d502951c885ab6f095f7bc9bbf5707e33f8a8e4648b445c804f5185698
+QuantumGuard.RemoteStartup.exe          3aa2ff56b6797f995bfd935e9fc36a20e02898508c93aaa391e87447cc06e4b5
+Rebuilt QA ZIP                          f2043d41f23f8e2616234212e4cf225e126c158e6378662bdabc343c13c75c08
