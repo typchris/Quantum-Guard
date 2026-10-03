@@ -109,16 +109,18 @@ Preview 10 keeps the existing low-usage design:
 
 ## Security
 
-The previously exposed QA signing identity is not used by the Preview 10 workflow. The build requires a replacement signing identity supplied only through protected GitHub Actions secrets.
+The previously exposed QA signing identity is not used by the Preview 10 workflow.
 
-Required secrets:
+For stable upgrade-capable QA releases, configure a replacement signing identity through protected GitHub Actions secrets:
 
 * QG_ANDROID_QA_KEYSTORE_B64
 * QG_ANDROID_QA_STORE_PASSWORD
 * QG_ANDROID_QA_KEY_PASSWORD
 * QG_ANDROID_QA_CERT_SHA256
 
-The new keystore must contain alias quantumguard-preview.
+The replacement keystore must contain alias quantumguard-preview.
+
+If these protected secrets are not configured, CI generates a new ephemeral signing identity inside the GitHub runner. The private key is not committed or exported. That artifact is safe for fresh-install QA, but it cannot update an APK signed by the old or a different certificate.
 
 ## Validation boundary
 
