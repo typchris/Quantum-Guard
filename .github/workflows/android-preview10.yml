@@ -17,9 +17,11 @@ on:
       - "android/preview10_patch_v2_parts/**"
       - "android/preview10_admin_ui_consistency.patch.xz.b64"
       - "android/preview10_receiver_flag_hotfix.patch.xz.b64"
+      - "android/preview10_managed_client_hardening.patch.xz.b64"
       - "android/preview10_final_hotfix.patch"
       - "supabase/migrations/20261003190313_android_admin_role_and_capability_sync.sql"
       - "supabase/migrations/20261003191122_persistent_state_commands.sql"
+      - "supabase/migrations/20261003204822_claim_managed_device_installation_identity.sql"
       - ".github/workflows/android-preview10.yml"
   workflow_dispatch:
 
@@ -199,7 +201,13 @@ jobs:
           xz -dc "$RUNNER_TEMP/preview10-receiver.patch.xz" > "$RUNNER_TEMP/preview10-receiver.patch"
           patch -p1 --batch < "$RUNNER_TEMP/preview10-receiver.patch"
 
-
+          tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview10_managed_client_hardening.patch.xz.b64" > "$RUNNER_TEMP/preview10-managed-client.patch.xz.b64"
+          echo "6d816c293efe7acf304dfb695d4a3c844caac7d698e1d788d4db62ce40c24468  $RUNNER_TEMP/preview10-managed-client.patch.xz.b64" | sha256sum -c -
+          base64 --decode "$RUNNER_TEMP/preview10-managed-client.patch.xz.b64" > "$RUNNER_TEMP/preview10-managed-client.patch.xz"
+          echo "885016ee7d98d346020d0d407864abc7b2aeebc88d764d038f8a097baa8cf2e0  $RUNNER_TEMP/preview10-managed-client.patch.xz" | sha256sum -c -
+          xz -t "$RUNNER_TEMP/preview10-managed-client.patch.xz"
+          xz -dc "$RUNNER_TEMP/preview10-managed-client.patch.xz" > "$RUNNER_TEMP/preview10-managed-client.patch"
+          patch -p1 --batch < "$RUNNER_TEMP/preview10-managed-client.patch"
 
           grep -q "Override minutes must be between 1 and 1440" app/src/main/java/com/quantumguard/android/MainActivity.java
           grep -q "Quantum Guard Preview 10 does not request normal notification permission" app/src/main/java/com/quantumguard/android/MainActivity.java
@@ -217,6 +225,10 @@ jobs:
           grep -q "versionName '1.11.0-preview.10'" app/build.gradle
           grep -q "device_heartbeat_v2" app/src/main/java/com/quantumguard/android/SupabaseApi.java
           grep -q "patch_device_policy" app/src/main/java/com/quantumguard/android/SupabaseApi.java
+          grep -q "claim_device_installation" app/src/main/java/com/quantumguard/android/SupabaseApi.java
+          grep -q "installation_claimed" app/src/main/java/com/quantumguard/android/CloudSyncService.java
+          grep -q "withLocalEnrollmentAuthority" app/src/main/java/com/quantumguard/android/MainActivity.java
+          grep -q "Remote sign-out is disabled for managed Android clients" app/src/main/java/com/quantumguard/android/CloudSyncService.java
           grep -q 'new JSONObject().put("event","INSERT").put("schema","public").put("table","device_commands")' app/src/main/java/com/quantumguard/android/CloudSyncService.java
           ! grep -q "quantumguard-preview-qa" app/build.gradle
           python3 scripts/qa_static_checks.py
@@ -355,10 +367,15 @@ jobs:
           {
             echo "Signing mode: $QG_SIGNING_MODE"
             echo "Certificate SHA256: $(printf '%s' "$QG_ANDROID_QA_CERT_SHA256" | tr -d ':')"
-            echo "Installation note: protected rotated QA signing identity was used."
+            if [ "$QG_SIGNING_MODE" = "ephemeral-fresh-install" ]; then
+              echo "Installation note: uninstall any older differently signed QA build before installing this APK."
+            else
+              echo "Installation note: protected rotated QA signing identity was used."
+            fi
           } > artifacts/SIGNING_INFO.txt
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261003190313_android_admin_role_and_capability_sync.sql" artifacts/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261003191122_persistent_state_commands.sql" artifacts/
+          cp "$GITHUB_WORKSPACE/supabase/migrations/20261003204822_claim_managed_device_installation_identity.sql" artifacts/
           (cd "$QG_SRC" && zip -qr "$GITHUB_WORKSPACE/artifacts/QuantumGuard-Android-1.11.0-preview.10-source.zip" . \
             -x "app/build/*" "build/*" ".gradle/*" "qa-signing/*")
 
