@@ -278,6 +278,11 @@ jobs:
               -alias quantumguard-preview >/dev/null
 
             EXPECTED_CERT="$(printf '%s' "$QG_ANDROID_QA_CERT_SHA256" | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+            COMPROMISED_CERT="13C11E862AD179B58F8B6DEF377912FD390433C4D98C4669785361F5B60E4BEB"
+            if [ "$EXPECTED_CERT" = "$COMPROMISED_CERT" ]; then
+              echo "::error::The configured QA certificate is the compromised public Preview 7/8 identity. Rotate the signing key."
+              exit 1
+            fi
             ACTUAL_CERT="$(keytool -list -v -keystore qa-signing/quantumguard-preview.jks -storepass "$QG_ANDROID_QA_STORE_PASSWORD" -alias quantumguard-preview | awk -F': ' '/SHA256:/{gsub(":","",$2); print toupper($2); exit}')"
             test -n "$ACTUAL_CERT"
             if [ "$ACTUAL_CERT" != "$EXPECTED_CERT" ]; then
