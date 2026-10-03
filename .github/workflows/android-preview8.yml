@@ -9,7 +9,6 @@ on:
       - "android/preview6_overlay/**"
       - "android/preview6_overlay_parts/**"
       - "android/preview7_patch.xz.b64"
-      - "android/preview7_qa_keystore.b64"
       - "android/preview8_usage_patch.xz.b64"
       - "android/preview8/**"
       - ".github/workflows/android-preview8.yml"
@@ -26,6 +25,12 @@ jobs:
   build-android-preview8:
     runs-on: ubuntu-latest
     timeout-minutes: 50
+
+    env:
+      QG_ANDROID_QA_KEYSTORE_B64: ${{ secrets.QG_ANDROID_QA_KEYSTORE_B64 }}
+      QG_ANDROID_QA_STORE_PASSWORD: ${{ secrets.QG_ANDROID_QA_STORE_PASSWORD }}
+      QG_ANDROID_QA_KEY_PASSWORD: ${{ secrets.QG_ANDROID_QA_KEY_PASSWORD }}
+      QG_ANDROID_QA_CERT_SHA256: ${{ secrets.QG_ANDROID_QA_CERT_SHA256 }}
 
     steps:
       - name: Checkout
@@ -140,9 +145,30 @@ jobs:
           p.write_text(t, encoding="utf-8")
           PY
 
+          : "${QG_ANDROID_QA_KEYSTORE_B64:?missing QG_ANDROID_QA_KEYSTORE_B64 secret}"
+          : "${QG_ANDROID_QA_STORE_PASSWORD:?missing QG_ANDROID_QA_STORE_PASSWORD secret}"
+          : "${QG_ANDROID_QA_KEY_PASSWORD:?missing QG_ANDROID_QA_KEY_PASSWORD secret}"
+          : "${QG_ANDROID_QA_CERT_SHA256:?missing QG_ANDROID_QA_CERT_SHA256 secret}"
           mkdir -p qa-signing
-          tr -d '\n\r' < "$GITHUB_WORKSPACE/android/preview7_qa_keystore.b64" | base64 --decode > qa-signing/quantumguard-preview.jks
-          echo "865ad526f0eba7a8856f54a020c3c7a920639b225e98f0235819fc0e4055bea2  qa-signing/quantumguard-preview.jks" | sha256sum -c -
+          printf '%s' "$QG_ANDROID_QA_KEYSTORE_B64" | base64 --decode > qa-signing/quantumguard-preview.jks
+          chmod 600 qa-signing/quantumguard-preview.jks
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          t = p.read_text(encoding="utf-8")
+          replacements = {
+              "storePassword 'quantumguard-preview-qa'": 'storePassword System.getenv("QG_ANDROID_QA_STORE_PASSWORD")',
+              "keyPassword 'quantumguard-preview-qa'": 'keyPassword System.getenv("QG_ANDROID_QA_KEY_PASSWORD")',
+          }
+          for old, new in replacements.items():
+              if old not in t:
+                  raise SystemExit(f"Expected QA signing placeholder not found: {old}")
+              t = t.replace(old, new)
+          if "quantumguard-preview-qa" in t:
+              raise SystemExit("Hardcoded QA signing password remains in build.gradle")
+          p.write_text(t, encoding="utf-8")
+          PY
 
           python3 scripts/qa_static_checks.py
           grep -q "versionName '1.11.0-preview.7'" app/build.gradle
@@ -213,7 +239,12 @@ jobs:
           test -f "$APK"
           SIG="$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK")"
           printf '%s\n' "$SIG"
-          printf '%s\n' "$SIG" | tr -d ':' | tr '[:upper:]' '[:lower:]' | grep -q "13c11e862ad179b58f8b6def377912fd390433c4d98c4669785361f5b60e4beb"
+          EXPECTED_CERT="$(printf '%s' "$QG_ANDROID_QA_CERT_SHA256" | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if ! [[ "$EXPECTED_CERT" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error::QG_ANDROID_QA_CERT_SHA256 must be a 64-character SHA-256 fingerprint"
+            exit 1
+          fi
+          printf '%s\n' "$SIG" | tr -d ':' | tr '[:upper:]' '[:lower:]' | grep -q "$EXPECTED_CERT"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.quantumguard.android'.*versionName='1.11.0-preview.8'"
 
