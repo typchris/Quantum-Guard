@@ -197,7 +197,7 @@ jobs:
           echo "a47a9432dc4c674dc767dbdeabe0f1e6760890770347abb9293c2dd55c572006  $RUNNER_TEMP/preview10-receiver.patch.xz" | sha256sum -c -
           xz -t "$RUNNER_TEMP/preview10-receiver.patch.xz"
           xz -dc "$RUNNER_TEMP/preview10-receiver.patch.xz" > "$RUNNER_TEMP/preview10-receiver.patch"
-          patch -p4 --batch < "$RUNNER_TEMP/preview10-receiver.patch"
+          patch -p1 --batch < "$RUNNER_TEMP/preview10-receiver.patch"
 
 
 
