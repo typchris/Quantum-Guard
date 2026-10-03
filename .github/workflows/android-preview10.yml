@@ -188,15 +188,15 @@ jobs:
           echo "215c9ce0e0b0024c64a3c206a0485c14d1ece68f56f3d3e53c19ed1f1fe04187  $RUNNER_TEMP/preview10-admin-ui.patch.xz" | sha256sum -c -
           xz -t "$RUNNER_TEMP/preview10-admin-ui.patch.xz"
           xz -dc "$RUNNER_TEMP/preview10-admin-ui.patch.xz" > "$RUNNER_TEMP/preview10-admin-ui.patch"
-          patch -p1 --batch < "$RUNNER_TEMP/preview10-admin-ui.patch"
+          patch -p4 --batch < "$RUNNER_TEMP/preview10-admin-ui.patch"
 
 
           grep -q "Override minutes must be between 1 and 1440" app/src/main/java/com/quantumguard/android/MainActivity.java
           grep -q "Quantum Guard Preview 10 does not request normal notification permission" app/src/main/java/com/quantumguard/android/MainActivity.java
           grep -q "isPolicyPage" app/src/main/java/com/quantumguard/android/MainActivity.java
           grep -q 'boolean canAdmin=!api.signedIn()||contextCanAdmin(ctx)' app/src/main/java/com/quantumguard/android/MainActivity.java
-          grep -q 'if(local){ok.accept(new PolicyStore(this).raw());return;}' app/src/main/java/com/quantumguard/android/MainActivity.java
-          grep -q 'devicesSpinner.setTag(current)' app/src/main/java/com/quantumguard/android/MainActivity.java
+          grep -Fq 'if(id.equals(store.get("device_id"))){cb.accept(new PolicyStore(this).raw());return;}' app/src/main/java/com/quantumguard/android/MainActivity.java
+          grep -Fq 's.setTag(wanted);s.setAdapter' app/src/main/java/com/quantumguard/android/MainActivity.java
 
           cp "$GITHUB_WORKSPACE/android/preview10/QA_CHECKLIST_PREVIEW_10.md" QA_CHECKLIST_PREVIEW_10.md
           cp "$GITHUB_WORKSPACE/android/preview10/RELEASE_NOTES_PREVIEW_10.md" RELEASE_NOTES_PREVIEW_10.md
