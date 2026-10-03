@@ -15,6 +15,7 @@ on:
       - "android/preview9_efficiency.patch"
       - "android/preview10/**"
       - "android/preview10_patch_parts/**"
+      - "android/preview10_final_hotfix.patch"
       - "supabase/migrations/20261003190313_android_admin_role_and_capability_sync.sql"
       - "supabase/migrations/20261003191122_persistent_state_commands.sql"
       - ".github/workflows/android-preview10.yml"
@@ -178,6 +179,10 @@ jobs:
           xz -dc "$RUNNER_TEMP/preview10.patch.xz" > "$RUNNER_TEMP/preview10.patch"
           cd "$QG_SRC"
           patch -p1 --batch < "$RUNNER_TEMP/preview10.patch"
+          patch -p1 --batch < "$GITHUB_WORKSPACE/android/preview10_final_hotfix.patch"
+
+          grep -q "Override minutes must be between 1 and 1440" app/src/main/java/com/quantumguard/android/MainActivity.java
+          grep -q "Quantum Guard Preview 10 does not request normal notification permission" app/src/main/java/com/quantumguard/android/MainActivity.java
 
           cp "$GITHUB_WORKSPACE/android/preview10/QA_CHECKLIST_PREVIEW_10.md" QA_CHECKLIST_PREVIEW_10.md
           cp "$GITHUB_WORKSPACE/android/preview10/RELEASE_NOTES_PREVIEW_10.md" RELEASE_NOTES_PREVIEW_10.md
