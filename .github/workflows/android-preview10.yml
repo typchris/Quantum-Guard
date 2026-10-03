@@ -209,6 +209,26 @@ jobs:
           ! grep -q "quantumguard-preview-qa" app/build.gradle
           python3 scripts/qa_static_checks.py
 
+      - name: Build full protection blocklists
+        shell: bash
+        working-directory: ${{ env.QG_SRC }}
+        run: |
+          python3 scripts/build_blocklists.py
+          test -s app/src/main/assets/adaway.qgh
+          test -s app/src/main/assets/UT1/adult.qgh
+          test -s app/src/main/assets/UT1/gambling.qgh
+          test -s app/src/main/assets/UT1/gaming.qgh
+          test -s app/src/main/assets/UT1/social.qgh
+          test -s app/src/main/assets/UT1/streaming.qgh
+          test -s app/src/main/assets/UT1/vpn.qgh
+          test "$(stat -c%s app/src/main/assets/UT1/adult.qgh)" -gt 1000000
+
+      - name: Compile, unit tests, and Android lint
+        shell: bash
+        working-directory: ${{ env.QG_SRC }}
+        run: |
+          gradle --no-daemon clean testDebugUnitTest :app:lintDebug
+
       - name: Provision rotated QA signing identity
         shell: bash
         working-directory: ${{ env.QG_SRC }}
@@ -226,25 +246,11 @@ jobs:
             -alias quantumguard-preview >/dev/null
           echo "QG_SIGNING_MODE=protected-rotated-identity" >> "$GITHUB_ENV"
 
-      - name: Build full protection blocklists
+      - name: Build signed Preview 10 APK
         shell: bash
         working-directory: ${{ env.QG_SRC }}
         run: |
-          python3 scripts/build_blocklists.py
-          test -s app/src/main/assets/adaway.qgh
-          test -s app/src/main/assets/UT1/adult.qgh
-          test -s app/src/main/assets/UT1/gambling.qgh
-          test -s app/src/main/assets/UT1/gaming.qgh
-          test -s app/src/main/assets/UT1/social.qgh
-          test -s app/src/main/assets/UT1/streaming.qgh
-          test -s app/src/main/assets/UT1/vpn.qgh
-          test "$(stat -c%s app/src/main/assets/UT1/adult.qgh)" -gt 1000000
-
-      - name: Unit tests, lint, and APK build
-        shell: bash
-        working-directory: ${{ env.QG_SRC }}
-        run: |
-          gradle --no-daemon clean testDebugUnitTest :app:lintDebug :app:assembleDebug
+          gradle --no-daemon :app:assembleDebug
 
       - name: Verify Preview 10 APK
         shell: bash
