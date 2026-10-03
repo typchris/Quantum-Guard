@@ -1,63 +1,58 @@
-# Quantum Guard Windows Preview 4 Remote Control Repair
+# Quantum Guard Windows Preview 4 Remote Control QA
 
-This branch is the Windows cross-platform control handoff for the exact owner-supplied `QuantumGuard-1.11.0-preview.4-x64.zip` WinUI baseline.
+This branch preserves the owner-supplied Windows WinUI `1.11.0-preview.4` frontend and its original `QuantumGuard.Engine.exe`.
 
-## Baseline
+## Goal
 
-The official Windows baseline for this work is the compiled WinUI 3 Preview 4 package, not the older Go-only Mobile Admin Preview 5/6 test builds.
+Allow Android Owner/Admin clients to control the Windows endpoint reliably without replacing the working WinUI application or creating a second protection engine.
 
-Baseline ZIP SHA256:
+## Root causes fixed
 
-`d5bee13c77ec988b38d7220dc5f04c78efd02718c85fbbe08492667d4ec9c2af`
+* Windows command names differed from Android admin command names.
+* Stateful Focus/Web/Download commands could arrive as transient commands instead of persistent Windows policy.
+* Stale Windows device rows could appear online long after the client stopped checking in.
+* The correct Preview 4 AppData folder could be missing the cloud session/device enrollment held by an older QA folder.
+* The Windows executable inventory needed a bounded startup publication path for Android administration.
+* Startup presence could remain stale until the original engine reached its next cloud interval.
 
-Critical original binaries remain unchanged in the rebuilt QA package:
+## Windows repair helper
 
-* QuantumGuard.Engine.exe: `ea1f15565b41292cf860e395bdcb3f6d8d8d5af4da6f5fc6a8b04d9bfb2af857`
-* QuantumGuard.UI.exe: `f78d32a5a8b04fa206a98a7811425069bb0e9def245054bf1b19af92a76e94b9`
-* QuantumGuard.UI.dll: `d08d61d502951c885ab6f095f7bc9bbf5707e33f8a8e4648b445c804f5185698`
+`QuantumGuard.RemoteStartup.exe` runs before the existing WinUI application. It:
 
-## Failure found
+1. Repairs/migrates missing per-user cloud state from known older QA folders without deleting the source.
+2. Restores and refreshes the Supabase session using Windows DPAPI.
+3. Sends one authenticated startup heartbeat for the enrolled Windows device.
+4. Fetches the selected Windows device context and merges only supported remotely-managed policy fields into the local config.
+5. Publishes one bounded Windows executable inventory snapshot.
+6. Launches the original `QuantumGuard.UI.exe`.
 
-Android Owner/Admin was successfully writing policy/commands to Supabase, but Windows was not consuming them reliably. Live Windows commands such as refresh_policy and lock_device remained pending. Earlier Windows Preview 5 tests also recorded unsupported start_focus and refresh_app_inventory commands.
+The helper exits after launch. The original `QuantumGuard.Engine.exe` remains the only protection/enforcement process.
 
-Reverse engineering of the owner-supplied Preview 4 engine confirmed it already has:
+## Supported Android Owner/Admin -> Windows controls
 
-* cloud session restore
-* assigned-policy polling
-* command polling and acknowledgement
-* remote command execution
-* WinUI named-pipe IPC
-* approximately 60-second cloud worker cadence
+* Protected Apps using Windows executable paths
+* Focus On/Off, allow/deny mode and Focus executable list
+* Schedules
+* After Hours
+* Web Protection
+* Ad/tracker filtering
+* Web categories
+* Blocked/allowed domains
+* Download Guard, risky/all mode and blocked extensions
+* Refresh Policy
+* Lock Device / Lock Apps
 
-The correct repair therefore keeps the original protection engine and fixes cloud-state recovery plus command compatibility rather than introducing a second enforcement engine.
+Android-only app-install / Google Play restrictions are not Windows Preview 4 enforcement features.
 
-## Rebuilt QA package
+## Backend migrations
 
-The QA package adds `QuantumGuard.RemoteStartup.exe` and makes it the default Start wrapper.
+* `20261003214639_windows_cross_platform_command_compatibility.sql`
+* `20261003215622_device_context_presence_accuracy.sql`
 
-The helper:
+Both are already applied to the Quantum Guard Supabase project.
 
-1. Uses the correct `%APPDATA%\QuantumAppGuard` state directory.
-2. Imports only missing cloud session/device enrollment fields from known earlier QA folders when needed.
-3. Never deletes or modifies the source legacy state file.
-4. Backs up the correct Preview 4 state before a migration write.
-5. Resets only the local policy cursor after migration.
-6. Restores the DPAPI session using the current Windows user.
-7. Refreshes the Supabase session if needed.
-8. Prefetches the current policy for the exact enrolled Windows device.
-9. Merges only remotely managed policy fields into the local config before engine startup.
-10. Preserves passwords, startup settings, vault information and unrelated local configuration.
-11. Publishes one bounded Windows executable inventory snapshot at startup.
-12. Launches the original QuantumGuard.UI.exe. The original QuantumGuard.Engine.exe remains the sole enforcement process.
+## Integrity
 
-The production updater feed is unchanged.
+All original Preview 4 files are preserved byte-for-byte except `Start Quantum Guard.cmd`, which intentionally launches the repair helper. The original launcher is retained as `Start Quantum Guard (Direct).cmd`.
 
-## Live backend fixes
-
-Migration `20261003214639_windows_cross_platform_command_compatibility` maps Android-facing commands to the existing Windows command vocabulary and keeps stateful features policy-backed.
-
-Migration `20261003215622_device_context_presence_accuracy` reports a target Offline when the last heartbeat is older than 15 minutes, preventing stale Windows rows from appearing actively connected.
-
-## QA boundary
-
-The rebuilt package passes static integrity/build checks, but physical Windows-to-Android validation is still required. Fully exit older QA builds before starting this package.
+Production updater feed remains unchanged. Physical Android -> Windows QA is still required.
