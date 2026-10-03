@@ -14,7 +14,7 @@ on:
       - "android/preview9/**"
       - "android/preview9_efficiency.patch"
       - "android/preview10/**"
-      - "android/preview10_patch_parts/**"
+      - "android/preview10_patch_v2_parts/**"
       - "android/preview10_final_hotfix.patch"
       - "supabase/migrations/20261003190313_android_admin_role_and_capability_sync.sql"
       - "supabase/migrations/20261003191122_persistent_state_commands.sql"
@@ -172,10 +172,10 @@ jobs:
       - name: Reconstruct and apply Preview 10 admin reliability patch
         shell: bash
         run: |
-          cat "$GITHUB_WORKSPACE"/android/preview10_patch_parts/part* > "$RUNNER_TEMP/preview10.patch.xz.b64"
-          echo "460370f89084e58169d92e90c3a73351e63c4116800214ebe3b4975f97bc8a70  $RUNNER_TEMP/preview10.patch.xz.b64" | sha256sum -c -
+          cat "$GITHUB_WORKSPACE"/android/preview10_patch_v2_parts/part* > "$RUNNER_TEMP/preview10.patch.xz.b64"
+          echo "b43481d6c7280f96f805a60cf30ada3e52c88a7fe47e774093489160cce503ec  $RUNNER_TEMP/preview10.patch.xz.b64" | sha256sum -c -
           tr -d '\n\r' < "$RUNNER_TEMP/preview10.patch.xz.b64" | base64 --decode > "$RUNNER_TEMP/preview10.patch.xz"
-          echo "028a7582fe8de7b7efd7d1e942e3c51c5ef005a469d9c3ddf85bebd0a1db51a2  $RUNNER_TEMP/preview10.patch.xz" | sha256sum -c -
+          echo "8e907867fc69cec9f3671cf7cd08bb15cb5111a7f44cbb80d01fa77badab37ff  $RUNNER_TEMP/preview10.patch.xz" | sha256sum -c -
           xz -dc "$RUNNER_TEMP/preview10.patch.xz" > "$RUNNER_TEMP/preview10.patch"
           cd "$QG_SRC"
           patch -p1 --batch < "$RUNNER_TEMP/preview10.patch"
@@ -195,48 +195,22 @@ jobs:
           ! grep -q "quantumguard-preview-qa" app/build.gradle
           python3 scripts/qa_static_checks.py
 
-      - name: Provision safe QA signing identity
+      - name: Provision rotated QA signing identity
         shell: bash
         working-directory: ${{ env.QG_SRC }}
         run: |
+          : "${QG_ANDROID_QA_KEYSTORE_B64:?missing QG_ANDROID_QA_KEYSTORE_B64 secret}"
+          : "${QG_ANDROID_QA_STORE_PASSWORD:?missing QG_ANDROID_QA_STORE_PASSWORD secret}"
+          : "${QG_ANDROID_QA_KEY_PASSWORD:?missing QG_ANDROID_QA_KEY_PASSWORD secret}"
+          : "${QG_ANDROID_QA_CERT_SHA256:?missing QG_ANDROID_QA_CERT_SHA256 secret}"
           mkdir -p qa-signing
-
-          if [ -n "$QG_ANDROID_QA_KEYSTORE_B64" ] && \
-             [ -n "$QG_ANDROID_QA_STORE_PASSWORD" ] && \
-             [ -n "$QG_ANDROID_QA_KEY_PASSWORD" ] && \
-             [ -n "$QG_ANDROID_QA_CERT_SHA256" ]; then
-            echo "Using protected replacement QA signing identity."
-            printf '%s' "$QG_ANDROID_QA_KEYSTORE_B64" | base64 --decode > qa-signing/quantumguard-preview.jks
-            chmod 600 qa-signing/quantumguard-preview.jks
-            keytool -list -keystore qa-signing/quantumguard-preview.jks \
-              -storepass "$QG_ANDROID_QA_STORE_PASSWORD" \
-              -alias quantumguard-preview >/dev/null
-            echo "QG_SIGNING_MODE=protected-replacement" >> "$GITHUB_ENV"
-          else
-            echo "::warning::Replacement QA signing secrets are not configured. Generating an ephemeral fresh-install QA identity. This APK will not update an app signed by the old QA certificate."
-            PASS="$(openssl rand -hex 24)"
-            keytool -genkeypair \
-              -keystore qa-signing/quantumguard-preview.jks \
-              -storepass "$PASS" \
-              -keypass "$PASS" \
-              -alias quantumguard-preview \
-              -keyalg RSA \
-              -keysize 3072 \
-              -validity 3650 \
-              -dname "CN=Quantum Guard Preview 10 Ephemeral QA,O=Quantum Guard,C=TT" \
-              -noprompt
-            chmod 600 qa-signing/quantumguard-preview.jks
-
-            CERT="$(keytool -list -v \
-              -keystore qa-signing/quantumguard-preview.jks \
-              -storepass "$PASS" \
-              -alias quantumguard-preview | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 | tr -d ':')"
-            test "${#CERT}" -eq 64
-            echo "QG_ANDROID_QA_STORE_PASSWORD=$PASS" >> "$GITHUB_ENV"
-            echo "QG_ANDROID_QA_KEY_PASSWORD=$PASS" >> "$GITHUB_ENV"
-            echo "QG_ANDROID_QA_CERT_SHA256=$CERT" >> "$GITHUB_ENV"
-            echo "QG_SIGNING_MODE=ephemeral-fresh-install" >> "$GITHUB_ENV"
-          fi
+          printf '%s' "$QG_ANDROID_QA_KEYSTORE_B64" | base64 --decode > qa-signing/quantumguard-preview.jks
+          chmod 600 qa-signing/quantumguard-preview.jks
+          test -s qa-signing/quantumguard-preview.jks
+          keytool -list -keystore qa-signing/quantumguard-preview.jks \
+            -storepass "$QG_ANDROID_QA_STORE_PASSWORD" \
+            -alias quantumguard-preview >/dev/null
+          echo "QG_SIGNING_MODE=protected-rotated-identity" >> "$GITHUB_ENV"
 
       - name: Build full protection blocklists
         shell: bash
@@ -303,11 +277,7 @@ jobs:
           {
             echo "Signing mode: $QG_SIGNING_MODE"
             echo "Certificate SHA256: $(printf '%s' "$QG_ANDROID_QA_CERT_SHA256" | tr -d ':')"
-            if [ "$QG_SIGNING_MODE" = "ephemeral-fresh-install" ]; then
-              echo "Installation note: uninstall an older differently signed QA build before installing this APK."
-            else
-              echo "Installation note: protected replacement signing identity was used."
-            fi
+            echo "Installation note: protected rotated QA signing identity was used."
           } > artifacts/SIGNING_INFO.txt
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261003190313_android_admin_role_and_capability_sync.sql" artifacts/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261003191122_persistent_state_commands.sql" artifacts/
