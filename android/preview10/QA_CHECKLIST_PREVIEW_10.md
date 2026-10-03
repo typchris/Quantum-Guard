@@ -118,5 +118,6 @@ Re-test:
 3. Required special-access declarations remain present.
 4. No Supabase service-role key exists in the APK/source.
 5. No hardcoded QA keystore password exists.
-6. APK signature matches the replacement QG_ANDROID_QA_CERT_SHA256 secret.
-7. The old public QA signing identity is not used.
+6. If protected replacement signing secrets are configured, the APK signature matches QG_ANDROID_QA_CERT_SHA256.
+7. If CI reports ephemeral-fresh-install signing, confirm the old QA app is uninstalled before installing this APK.
+8. The old public QA signing identity is not used.
