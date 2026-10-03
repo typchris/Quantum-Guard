@@ -82,7 +82,7 @@ These items were completed and tested in the session that has local preview.4 so
 
 ## Deliberate release holds
 
-Do **not** publish a production release, change the production update feed, or make installer execution unattended until the relevant gates below are complete. The GitHub source repository is already private, so any runtime/update path that depended on anonymous GitHub URLs must be treated as broken until migrated to Cloudflare.
+Do **not** publish a production release, change the production update feed, or make installer execution unattended until the relevant gates below are complete. As of 2026-10-03 the GitHub source repository is public. Do not rely on repository secrecy for runtime security. If the project is intended to be closed source, the owner must change repository visibility to private in GitHub settings. Runtime/update trust must still come from signed artifacts, authorization controls, and the Cloudflare distribution path.
 
 ### Cloudflare source drift
 
