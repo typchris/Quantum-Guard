@@ -225,7 +225,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tr -d '\\n\\r' < "$GITHUB_WORKSPACE/android/1.12.4/overlay.tar.xz.b64" | base64 --decode > "$RUNNER_TEMP/qg-1.12.4-overlay.tar.xz"
+          tr -d '\n\r' < "$GITHUB_WORKSPACE/android/1.12.4/overlay.tar.xz.b64" | base64 --decode > "$RUNNER_TEMP/qg-1.12.4-overlay.tar.xz"
           xz -t "$RUNNER_TEMP/qg-1.12.4-overlay.tar.xz"
           tar -xJf "$RUNNER_TEMP/qg-1.12.4-overlay.tar.xz" -C "$QG_SRC"
           test -f "$QG_SRC/app/build.gradle"
