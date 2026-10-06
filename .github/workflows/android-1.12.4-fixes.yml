@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: android-1-12-4-${{ github.ref }}
@@ -238,8 +239,26 @@ jobs:
       - name: Build full protection blocklists
         shell: bash
         working-directory: ${{ env.QG_SRC }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python3 scripts/build_blocklists.py
+          set -euo pipefail
+          if ! python3 scripts/build_blocklists.py; then
+            echo "::warning::Live blocklist sources were unavailable. Restoring last verified Preview 10 blocklists."
+            ART="$RUNNER_TEMP/preview10-artifact.zip"
+            SRCZIP="$RUNNER_TEMP/preview10-source.zip"
+            curl -fL --retry 3 --retry-delay 2 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/typchris/Quantum-Guard/actions/artifacts/11286560323/zip" \
+              -o "$ART"
+            unzip -p "$ART" "QuantumGuard-Android-1.11.0-preview.10-source.zip" > "$SRCZIP"
+            test -s "$SRCZIP"
+            rm -rf "$RUNNER_TEMP/verified-assets"
+            mkdir -p "$RUNNER_TEMP/verified-assets"
+            unzip -q "$SRCZIP" "app/src/main/assets/*" -d "$RUNNER_TEMP/verified-assets"
+            cp -a "$RUNNER_TEMP/verified-assets/app/src/main/assets/." app/src/main/assets/
+          fi
           test -s app/src/main/assets/adaway.qgh
           test -s app/src/main/assets/UT1/adult.qgh
           test -s app/src/main/assets/UT1/gambling.qgh
