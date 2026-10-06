@@ -1,0 +1,31 @@
+name: Fetch Apktool Tooling
+
+on:
+  push:
+    branches:
+      - tools/jadx-decompiler
+    paths:
+      - ".github/workflows/fetch-apktool.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-apktool:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Apktool
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 4 --retry-delay 2 \
+            https://github.com/iBotPeaches/Apktool/releases/download/v3.0.3/apktool_3.0.3.jar \
+            -o apktool_3.0.3.jar
+          echo "dbf930b076c6b9be08d57c449cacefc3bdd6b71ebd59b3066fc0e1f5b14f9423  apktool_3.0.3.jar" | sha256sum -c -
+      - name: Upload Apktool
+        uses: actions/upload-artifact@v4
+        with:
+          name: apktool-3.0.3
+          path: apktool_3.0.3.jar
+          retention-days: 1
