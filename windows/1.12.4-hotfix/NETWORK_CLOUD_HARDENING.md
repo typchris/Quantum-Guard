@@ -26,6 +26,13 @@ The browser error page text `Destination unavailable` is also embedded in the en
 
 A normal message-loop exit reaches `stopLocalWebFilter`, but crash/forced termination and Windows end-session paths are not guaranteed to run the same cleanup. The watchdog also needs a stale-proxy recovery path before restarting the engine.
 
+Binary inspection also confirms two proxy timing behaviors that must be corrected:
+
+- HTTPS CONNECT uses a 15 second `net.DialTimeout`.
+- Once a CONNECT tunnel succeeds, both sides receive one fixed absolute deadline 15 minutes in the future.
+
+The first can make failed destinations appear to hang. The second can terminate otherwise healthy long-lived browser connections and force reconnects.
+
 ## Required network fixes
 
 ### 1. Crash-safe ownership state
@@ -109,7 +116,7 @@ For normal HTTP forwarding:
 
 - never recursively proxy QGuard's outbound proxy connection
 - strip hop-by-hop proxy headers
-- use bounded connect timeout
+- use a context-aware bounded connect timeout
 - use bounded TLS handshake timeout
 - use bounded response-header timeout
 - reuse healthy idle connections
@@ -119,8 +126,10 @@ For normal HTTP forwarding:
 For CONNECT:
 
 - validate host:port
-- use bounded dial timeout
+- replace the current 15 second raw dial with a context-aware bounded dial
 - return a standards-compatible proxy error when connection fails
+- do not impose the current fixed 15 minute lifetime on a healthy established tunnel
+- if idle protection is required, use an idle-aware timeout that is refreshed by traffic
 - close both sides of the tunnel cleanly
 - avoid leaving goroutines/connections alive after one side closes
 
@@ -139,29 +148,34 @@ After applying the QGuard proxy:
 
 The account-specific PowerShell recovery must not be the production solution.
 
+A new authenticated Supabase RPC is now live:
+
+`recover_my_device_context_v2(p_installation_id, p_platform, p_hostname, p_device_name)`
+
+It returns authoritative `get_my_device_context` data for the authenticated user, prefers a stable installation ID, and limits hostname/device-name fallback to one unambiguous legacy device whose installation ID is still empty.
+
 After PKCE returns a valid Supabase session:
 
 1. keep the new session in memory
 2. obtain or create a stable Windows installation ID
-3. call `recover_my_device_v2` using installation ID first, then hostname/device name only for legacy migration
-4. if a device is recovered, call `get_my_device_context`
-5. require that Supabase authorizes the newly authenticated user for that device
-6. if authorized, repair stale local `user_id`, email, display name, organization/device context
-7. preserve the existing enrolled device ID and organization
+3. call `recover_my_device_context_v2`
+4. require that Supabase returns an authorized device context for the newly authenticated user
+5. if authorized, repair stale local `user_id`, email, display name, organization/device context
+6. preserve the existing enrolled device ID and organization
+7. if the recovered legacy device has no installation ID, call `enroll_device_v2` with the recovered organization and the stable local installation ID so the existing row is claimed in place
 8. persist the new DPAPI-protected access/refresh session atomically
-9. if the existing device has no installation ID, bind it through `enroll_device_v2` or `claim_device_installation`
-10. start heartbeat, policy, command, realtime/polling workers
-11. refresh Cloud & Devices UI
+9. start heartbeat, policy, command, realtime/polling workers
+10. refresh Cloud & Devices UI
 
 Do not reject a successful Google login solely because the cached local user ID differs. The server-authorized device context is authoritative.
 
-If Supabase says the device belongs to a different user or organization, do not auto-transfer it. Preserve pairing and show a reconnect/authorization error.
+If Supabase says the installation belongs to a different user or organization, do not auto-transfer it. Preserve local pairing metadata and show a reconnect/authorization error.
 
 On startup:
 
 - restore DPAPI session
 - refresh token if needed
-- verify device context
+- verify device context through `recover_my_device_context_v2` or `get_my_device_context`
 - if the refresh token is invalid, clear only the encrypted auth session
 - keep installation ID, device ID and organization identity for a safe re-login
 
@@ -198,6 +212,7 @@ The server-side v2 enrollment migration is already live and rejects cross-user/c
 - Test an existing third-party/VPN proxy and confirm QGuard restores it exactly.
 - Confirm QGuard does not erase proxy settings changed by another application after QGuard started.
 - Test DNS, IPv4-only, IPv6-capable, slow TLS and failed upstream destinations.
+- Keep a CONNECT-heavy browser session open longer than 15 minutes and confirm it is not forcibly terminated by Quantum Guard.
 - Verify qguard.site and other ordinary HTTPS sites load normally.
 
 ### Cloud
