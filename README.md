@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>Focus. Protection. Control.</strong><br>
-  Quantum Guard is a Windows focused application control and device management project designed around local enforcement, cloud managed policies, and secure administrator control.
+  Quantum Guard provides local protection and authorized connected-device management for Windows and Android.
 </p>
 
 <p align="center">
@@ -14,6 +14,10 @@
 </p>
 
 ## Quantum Guard
+
+Prepared release-review builds: **Android 1.12.6** (Play bundle and installable APKs) and **Windows 1.12.4 x64** (complete app ZIP). They are uploaded as maintainer-only GitHub drafts while launch checks remain open. The builds are functional and use the supplied QG shield logo. Store approval and paid upgrades are not yet available; Windows binaries remain unsigned. See [store readiness](docs/STORE_READINESS.md) for the actual remaining work.
+
+An obsolete QA signing identity was retired during a repository-history cleanup. Contributors must start from a fresh clone and must not merge the old history back. See [SECURITY.md](SECURITY.md). Keep private credentials, local configuration and real device/user data out of public files and release assets.
 
 Quantum Guard is being developed as a central control platform for application restrictions, focus sessions, schedules, website protection, download controls, device enrollment, and administrator managed policies.
 
