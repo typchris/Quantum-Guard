@@ -15,9 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
 
-      - name: Validate release manifest
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+
+      - name: Validate legacy release manifest
         shell: bash
         run: |
           python - <<'PY'
@@ -39,7 +51,264 @@ jobs:
           if data["platform"] != "windows-x64":
               raise SystemExit("Unexpected platform value")
 
-          print(f"Validated Quantum Guard {data['version']} ({data['channel']})")
+          print(f"Validated legacy Quantum Guard {data['version']} ({data['channel']})")
+          PY
+
+      - name: Test legacy manifest publisher
+        run: cd scripts && python -m unittest test_publish_update_manifest.py
+
+      - name: Check Cloudflare Worker JavaScript syntax
+        run: node --check cloudflare/update-edge/src/index.js
+
+      - name: Enforce Cloudflare deployment guardrails
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path(".github/workflows/deploy-cloudflare-update-edge.yml").read_text(encoding="utf-8")
+          worker = Path("cloudflare/update-edge/src/index.js").read_text(encoding="utf-8")
+          sentinel = Path("cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md")
+
+          if "CLOUDFLARE_WORKER_DEPLOY_TOKEN" not in workflow:
+              raise SystemExit("Cloudflare deploy workflow must use the least-privilege deploy secret name")
+          if "\n  push:" in workflow or "\n  release:" in workflow:
+              raise SystemExit("Cloudflare staging deployment must remain manual")
+          if "confirm_source_synced" not in workflow:
+              raise SystemExit("Cloudflare deployment requires explicit source-sync confirmation")
+
+          if sentinel.exists():
+              if "SOURCE_SYNC_REQUIRED.md" not in workflow:
+                  raise SystemExit("Unsynchronized Worker source must fail closed")
+              print("Cloudflare source synchronization hold is active.")
+          else:
+              stale_markers = [
+                  "raw.githubusercontent.com/typchris/Quantum-Guard",
+                  "github.com/typchris/Quantum-Guard/releases/download/",
+              ]
+              found = [marker for marker in stale_markers if marker in worker]
+              if found:
+                  raise SystemExit(
+                      "Cloudflare sentinel was removed but legacy GitHub-proxy source remains: "
+                      + ", ".join(found)
+                  )
+              required_live_markers = ["/reports", "/downloads"]
+              missing = [marker for marker in required_live_markers if marker not in worker]
+              if missing:
+                  raise SystemExit(
+                      "Synchronized Worker source is missing expected protected routes: "
+                      + ", ".join(missing)
+                  )
+              if not Path("cloudflare/update-edge/package-lock.json").is_file():
+                  raise SystemExit(
+                      "Synchronized Worker source must include package-lock.json for reproducible CI/deploys"
+                  )
+              print("Cloudflare source appears synchronized with the R2/report architecture.")
+          PY
+
+      - name: Validate Supabase dependency pins
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          src = Path("supabase/functions/admin-account-control/index.ts").read_text(encoding="utf-8")
+          required = [
+              'jsr:@supabase/functions-js@2.5.0/edge-runtime.d.ts',
+              'npm:@supabase/supabase-js@2.117.2',
+          ]
+          for dep in required:
+              if dep not in src:
+                  raise SystemExit(f"Missing exact dependency pin: {dep}")
+          if re.search(r'@supabase/supabase-js@(latest|2)["\']', src):
+              raise SystemExit("Supabase JS must use an exact tested version")
+          PY
+
+      - name: Reject Supabase platform-log polling in runtime source
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          markers = [
+              "edge_logs",
+              "postgres_logs",
+              "auth_logs",
+              "function_logs",
+              "realtime_logs",
+              "query_logs",
+              "/logs/explorer",
+              "analytics/endpoints/logs",
+          ]
+          runtime_exts = {".go", ".cs", ".java", ".kt", ".kts", ".ts", ".js", ".py", ".ps1", ".sh"}
+          skip_parts = {".git", ".github", "docs"}
+          findings = []
+
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in runtime_exts:
+                  continue
+              if any(part in skip_parts for part in path.parts):
+                  continue
+              try:
+                  content = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              for marker in markers:
+                  if marker in content:
+                      findings.append(f"{path}: {marker}")
+
+          if findings:
+              raise SystemExit(
+                  "Quantum Guard runtime/source automation must not poll Supabase platform logs. "
+                  "Use application tables/RPCs for runtime state and targeted manual log queries only:\n"
+                  + "\n".join(findings)
+              )
+
+          print("No Supabase platform-log polling markers found in runtime source.")
+          PY
+
+      - name: Reject private-GitHub runtime update dependencies
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          markers = [
+              "https://raw.githubusercontent.com/typchris/Quantum-Guard",
+              "https://github.com/typchris/Quantum-Guard/releases/download/",
+              "https://api.github.com/repos/typchris/Quantum-Guard",
+          ]
+
+          source_exts = {
+              ".go", ".cs", ".xaml", ".json", ".ts", ".js",
+              ".ps1", ".nsi", ".yml", ".yaml", ".toml"
+          }
+
+          legacy_exact = {
+              Path("releases/latest.json"),
+              Path("releases/latest-stable.json"),
+              Path("scripts/publish_update_manifest.py"),
+              Path("scripts/test_publish_update_manifest.py"),
+              Path(".github/workflows/publish-update-manifest.yml"),
+              Path(".github/workflows/blank.yml"),
+          }
+
+          cloudflare_hold = Path("cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md").exists()
+          findings = []
+
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in source_exts:
+                  continue
+              if path in legacy_exact:
+                  continue
+              if ".git" in path.parts:
+                  continue
+              if cloudflare_hold and path.parts[:2] == ("cloudflare", "update-edge"):
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              for marker in markers:
+                  if marker in text:
+                      findings.append(f"{path}: {marker}")
+
+          if findings:
+              raise SystemExit(
+                  "Private GitHub repository must not be a runtime/update dependency:\n"
+                  + "\n".join(findings)
+              )
+
+          print("No private-GitHub runtime/update dependencies found in active source.")
+          PY
+
+      - name: Parse installer PowerShell scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($file in @(
+            'installer/build-installer.ps1',
+            'installer/rollback.ps1',
+            'installer/sign-artifacts.ps1',
+            'installer/verify-release.ps1'
+          )) {
+            [void][scriptblock]::Create((Get-Content -Raw $file))
+            Write-Host "Parsed $file"
+          }
+
+      - name: Enforce installer source synchronization hold
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          sentinel = Path("installer/SOURCE_SYNC_REQUIRED.md")
+          build = Path("installer/build-installer.ps1").read_text(encoding="utf-8")
+          nsis = Path("installer/QuantumGuard.nsi").read_text(encoding="utf-8")
+
+          if sentinel.exists():
+              if "SOURCE_SYNC_REQUIRED.md" not in build:
+                  raise SystemExit("Stale installer source must fail closed in build-installer.ps1")
+              print("Installer source synchronization hold is active.")
+          else:
+              if "taskkill.exe" in nsis and "/IM QuantumGuard" in nsis:
+                  raise SystemExit("Synced production installer must not use process-name taskkill handoff")
+              if "AllowUnsignedPreview" not in build:
+                  raise SystemExit("Installer build must distinguish unsigned preview QA from production signing")
+              print("Installer synchronization sentinel removed and unsafe taskkill handoff is absent.")
+          PY
+
+      - name: Reject committed secret files and obvious credentials
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          blocked_suffixes = {
+              ".pfx", ".p12", ".pem", ".key", ".jks", ".keystore"
+          }
+
+          blocked_names = {
+              ".env", ".dev.vars"
+          }
+
+          patterns = [
+              re.compile(r"sb_secret_[A-Za-z0-9_-]{16,}"),
+              re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
+              re.compile(r"ghp_[A-Za-z0-9]{20,}"),
+              re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+              re.compile(r"CLOUDFLARE_API_TOKEN\s*[:=]\s*['\"][A-Za-z0-9._-]{20,}['\"]"),
+              re.compile(r"AWS_SECRET_ACCESS_KEY\s*[:=]\s*['\"][A-Za-z0-9/+=]{20,}['\"]"),
+          ]
+
+          skip = {".git"}
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or any(part in skip for part in path.parts):
+                  continue
+
+              lower_name = path.name.lower()
+              if (
+                  path.suffix.lower() in blocked_suffixes
+                  or lower_name in blocked_names
+                  or (lower_name.startswith(".env.") and lower_name != ".env.example")
+                  or (lower_name.startswith(".dev.vars.") and lower_name != ".dev.vars.example")
+              ):
+                  raise SystemExit(f"Sensitive credential file must not be committed: {path}")
+
+              if path.stat().st_size > 2_000_000:
+                  continue
+
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+
+              for pattern in patterns:
+                  if pattern.search(text):
+                      raise SystemExit(f"Potential secret/private key material found in {path}")
+
+          print("No blocked secret files or obvious committed credentials found.")
           PY
 
       - name: Verify repository documentation
@@ -49,3 +318,34 @@ jobs:
           test -s SECURITY.md
           test -s SUPPORT.md
           test -s CHANGELOG.md
+          test -s UPDATES.md
+          test -s docs/CURRENT_HANDOFF.md
+          test -s docs/CLOUDFLARE_RELEASE_CREDENTIALS.md
+          test -s docs/SUPABASE_LOG_USAGE_POLICY.md
+
+
+      - name: Enforce ready-for-review source synchronization gates
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+        shell: bash
+        run: |
+          if [ -e cloudflare/update-edge/SOURCE_SYNC_REQUIRED.md ]; then
+            echo "::error::PR cannot leave draft while Cloudflare Worker source is unsynchronized."
+            exit 1
+          fi
+          if [ -e installer/SOURCE_SYNC_REQUIRED.md ]; then
+            echo "::error::PR cannot leave draft while installer/application source is unsynchronized."
+            exit 1
+          fi
+          if ! find . -name go.mod -not -path './.git/*' -print -quit | grep -q .; then
+            echo "::error::PR cannot leave draft without the tested Go engine source."
+            exit 1
+          fi
+          if ! find . -name '*.csproj' -not -path './.git/*' -print -quit | grep -q .; then
+            echo "::error::PR cannot leave draft without the tested WinUI/.NET source."
+            exit 1
+          fi
+          if ! find . -name '*.xaml' -not -path './.git/*' -print -quit | grep -q .; then
+            echo "::error::PR cannot leave draft without WinUI XAML source."
+            exit 1
+          fi
+          echo "Ready-for-review source synchronization gates passed."

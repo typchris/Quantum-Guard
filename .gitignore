@@ -1,0 +1,44 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.jks
+*.keystore
+secrets.*
+credentials.*
+wrangler.toml.local
+.dev.vars
+.dev.vars.*
+
+# Local signing / release material
+*.snk
+signing/
+release-secrets/
+
+# Build and IDE output
+bin/
+obj/
+out/
+dist/
+build/
+.vs/
+.vscode/
+.idea/
+TestResults/
+*.user
+*.suo
+
+# Go / temporary output
+*.test
+*.prof
+coverage.out
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
