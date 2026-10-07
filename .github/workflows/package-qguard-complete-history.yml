@@ -1,0 +1,135 @@
+name: Package Quantum Guard Complete History
+
+on:
+  push:
+    branches:
+      - archive/qguard-all-history-20261006
+    paths:
+      - .github/workflows/package-qguard-complete-history.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout complete repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare archive folders
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p qguard-history/repository
+          mkdir -p qguard-history/sources/branches
+          mkdir -p qguard-history/sources/tags
+          mkdir -p qguard-history/releases
+          mkdir -p qguard-history/actions-artifacts
+          mkdir -p qguard-history/manifests
+
+      - name: Save repository metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote -v > qguard-history/manifests/git-remotes.txt
+          git log --all --date=iso --pretty=format:'%H|%ad|%an|%s' > qguard-history/manifests/all-commits.txt
+          git for-each-ref --sort=refname --format='%(refname)|%(objectname)|%(subject)' refs/heads refs/remotes refs/tags > qguard-history/manifests/all-refs.txt
+          git status --short --branch > qguard-history/manifests/checkout-status.txt
+
+      - name: Create complete Git bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          git bundle create qguard-history/repository/Quantum-Guard-complete.git.bundle --all
+
+      - name: Create source snapshot for every branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r ref; do
+            branch="${ref#refs/remotes/origin/}"
+            [ "$branch" = "HEAD" ] && continue
+            safe="$(printf '%s' "$branch" | sed 's#[^A-Za-z0-9._-]#_#g')"
+            git archive --format=zip --output="qguard-history/sources/branches/${safe}.zip" "$ref"
+          done < <(git for-each-ref --format='%(refname)' refs/remotes/origin/)
+
+      - name: Create source snapshot for every tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            safe="$(printf '%s' "$tag" | sed 's#[^A-Za-z0-9._-]#_#g')"
+            git archive --format=zip --output="qguard-history/sources/tags/${safe}.zip" "$tag"
+          done < <(git tag --list)
+
+      - name: Download every GitHub release asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,name,isPrerelease,publishedAt > qguard-history/manifests/releases.json
+          mapfile -t tags < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[].tagName')
+          for tag in "${tags[@]}"; do
+            mkdir -p "qguard-history/releases/$tag"
+            gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,name,isPrerelease,publishedAt,url,assets > "qguard-history/releases/$tag/release.json"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "qguard-history/releases/$tag" --clobber || true
+          done
+
+      - name: Download verified Android build artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          declare -A ARTIFACTS
+          ARTIFACTS[11212619412]="QuantumGuard-Android-1.11.0-preview.5-QA-artifact.zip"
+          ARTIFACTS[11220317491]="QuantumGuard-Android-1.11.0-preview.6.1-QA-artifact.zip"
+          ARTIFACTS[11235677498]="QuantumGuard-Android-1.11.0-preview.7-QA-artifact.zip"
+          ARTIFACTS[11241092349]="QuantumGuard-Android-1.11.0-preview.8-QA-artifact.zip"
+          ARTIFACTS[11286560323]="QuantumGuard-Android-1.11.0-preview.10-QA-artifact.zip"
+
+          for id in "${!ARTIFACTS[@]}"; do
+            name="${ARTIFACTS[$id]}"
+            curl -fL --retry 3 --retry-delay 2               -H "Authorization: Bearer $GH_TOKEN"               -H "Accept: application/vnd.github+json"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip"               -o "qguard-history/actions-artifacts/$name"
+          done
+
+      - name: Add README
+        shell: bash
+        run: |
+          cat > qguard-history/README.txt <<'EOF'
+          Quantum Guard Complete GitHub History Archive
+
+          This package contains:
+          - A full Git bundle containing all repository refs and commit history available to this workflow.
+          - ZIP source snapshots for every remote branch.
+          - ZIP source snapshots for every Git tag.
+          - All downloadable GitHub Release assets.
+          - Selected successful Android QA GitHub Actions artifacts for Preview 5, Preview 6.1, Preview 7, Preview 8 and Preview 10.
+          - Repository and release manifests.
+
+          Some historical binaries that existed only as ChatGPT-generated files and were never uploaded to GitHub cannot be reconstructed byte-for-byte from GitHub alone. Those can be added outside this workflow when their bytes are still locally recoverable.
+          EOF
+
+      - name: Build master GitHub archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -r -9 QuantumGuard-All-GitHub-Versions-And-Sources.zip qguard-history
+          sha256sum QuantumGuard-All-GitHub-Versions-And-Sources.zip > QuantumGuard-All-GitHub-Versions-And-Sources.zip.sha256
+
+      - name: Upload complete archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuantumGuard-All-GitHub-Versions-And-Sources
+          path: |
+            QuantumGuard-All-GitHub-Versions-And-Sources.zip
+            QuantumGuard-All-GitHub-Versions-And-Sources.zip.sha256
+          retention-days: 30
+          compression-level: 0
