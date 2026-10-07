@@ -27,7 +27,7 @@ Do not disable validation just to merge PR #3.
 
 ## 1. Synchronize the tested preview.4 application source
 
-The GitHub repository is already private. The synchronized application source must therefore have **no runtime dependency on anonymous GitHub raw/release/API URLs** for updates or blocklists. Cloudflare must be the active public distribution path.
+As of 2026-10-03 the GitHub repository is public. The synchronized application source must still have **no security dependency on anonymous GitHub raw/release/API URLs** for updates or blocklists. Cloudflare should be the controlled public distribution path, and repository visibility must not be treated as an authorization boundary.
 
 Commit the complete source that produced the tested preview.4 build, including:
 
@@ -105,7 +105,7 @@ The payload may contain only bounded technical data such as version/build, Windo
 
 Read `docs/LEGACY_CLIENT_MIGRATION.md`.
 
-Because the repository is private, test at least one older GitHub-only updater build and confirm it fails its update check safely without disabling local protection. Then verify a manual upgrade to the Cloudflare-capable preview preserves configuration and reaches a successful Cloudflare update check.
+Because repository visibility can change and must not be a security dependency, test at least one older GitHub-only updater build and confirm it fails its update check safely without disabling local protection. Then verify a manual upgrade to the Cloudflare-capable preview preserves configuration and reaches a successful Cloudflare update check.
 
 Do not put GitHub credentials in the client.
 
@@ -271,4 +271,4 @@ When all previous items pass:
 - stage a signed preview release in R2
 - publish its signed staging manifest last
 - canary-test one device
-- do not switch production until the Cloudflare updater is proven for every supported production client. Because the GitHub source repo is already private, explicitly verify that preview.4 and all future clients have no anonymous-GitHub runtime update dependency.
+- do not switch production until the Cloudflare updater is proven for every supported production client. Explicitly verify that preview.4 and all future clients have no security dependency on anonymous GitHub runtime update URLs, regardless of whether the repository is public or private.
