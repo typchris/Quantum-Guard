@@ -58,6 +58,9 @@ class PublicationTests(unittest.TestCase):
     def test_corrupt_base64_fails_closed(self):
         self.assertTrue(guard.check_publication('source.b64', b'not valid base64!'))
 
+    def test_split_archives_cannot_bypass_inspection(self):
+        self.assertTrue(guard.check_publication('source_parts/part00', b'opaque fragment'))
+
     def test_nested_and_size_limits(self):
         data = zipped('file.txt', b'safe')
         self.assertTrue(guard.check_publication('deep.zip', data, depth=4))

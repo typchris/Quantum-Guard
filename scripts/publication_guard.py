@@ -32,6 +32,8 @@ def check_publication(name, data, depth=0, budget=None):
     member_name = name.rsplit('!', 1)[-1]
     if (RESTRICTED.search(member_name) and member_name != '.env.example') or DATA_EXPORT.search(member_name):
         reasons.append('restricted filename')
+    if re.search(r'_parts/part[^/]+$', member_name):
+        reasons.append('split archive requires a complete reviewed publication file')
     reasons.extend(check_bytes(data))
     if name.lower().endswith(('.exe', '.dll', '.dex')):
         reasons.extend(check_bytes(data.decode('utf-16-le', errors='ignore').encode()))
